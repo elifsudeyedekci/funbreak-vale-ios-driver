@@ -32,14 +32,6 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-  
-  # ⚠️ Firebase versiyonlarını kilitle (-G hatası düzeltmesi)
-  pod 'Firebase/Core', '10.25.0'
-  pod 'Firebase/Messaging', '10.25.0'
-  pod 'Firebase/Firestore', '10.25.0'
-  pod 'Firebase/Auth', '10.25.0'
-  
-  # ⚠️ Google Maps - Flutter plugin kendi yönetiyor (>= 8.4)
 end
 
 post_install do |installer|
@@ -74,6 +66,10 @@ post_install do |installer|
       
       # ⚠️ Build active architecture only
       config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
+      
+      # ⚠️ -G flag hatası FİNAL FIX!
+      config.build_settings.delete('COMPILER_INDEX_STORE_ENABLE')
+      config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
     end
   end
 end
