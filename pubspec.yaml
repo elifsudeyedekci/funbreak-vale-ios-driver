@@ -11,36 +11,35 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  provider: ^6.0.5
-  google_maps_flutter: ^2.5.0
-  geolocator: ^10.1.0
-  geocoding: ^2.1.1
+  provider: ^6.1.5
+  google_maps_flutter: ^2.14.0
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
   http: ^1.1.0
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  firebase_messaging: ^14.7.10
-  flutter_local_notifications: ^17.2.3
-  cloud_firestore: ^4.13.6
-  permission_handler: ^11.0.1
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  firebase_messaging: ^16.0.4
+  flutter_local_notifications: ^19.5.0
+  cloud_firestore: ^6.1.0
+  permission_handler: ^12.0.1
   shared_preferences: ^2.2.2
   image_picker: ^1.0.4
-  flutter_sound: ^9.28.0
+  flutter_sound: ^10.3.8
   path_provider: ^2.1.1
   url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
   android: true
-  ios: true      # ⚠️ iOS ENABLE!
+  ios: true
   image_path: "assets/app_icon.png"
   adaptive_icon_background: "#FFD700"
   adaptive_icon_foreground: "assets/app_icon.png"
-  # iOS icon ayarları
   remove_alpha_ios: true
   ios_content_mode: scaleAspectFit
 
@@ -50,4 +49,4 @@ flutter:
     - assets/app_icon.png
     - assets/images/
     - assets/icons/
-    - ios/Runner/Resources/notification.caf  # ⚠️ iOS SES DOSYASI! 
+    - ios/Runner/Resources/notification.caf
