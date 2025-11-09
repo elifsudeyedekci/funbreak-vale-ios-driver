@@ -24,7 +24,7 @@ dependencies:
   permission_handler: ^12.0.1
   shared_preferences: ^2.2.2
   image_picker: ^1.0.4
-  flutter_sound: ^10.3.8
+  flutter_sound: ^9.28.0
   path_provider: ^2.1.1
   url_launcher: ^6.3.2
 
