@@ -56,6 +56,19 @@ post_install do |installer|
       
       # ⚠️ Code signing
       config.build_settings['CODE_SIGN_IDENTITY'] = ''
+      
+      # ⚠️ Compiler flag hatası düzeltmesi (arm64 için)
+      config.build_settings['OTHER_CFLAGS'] = ['$(inherited)', '-DFOLLY_NO_CONFIG', '-DFOLLY_MOBILE=1', '-DFOLLY_USE_LIBCPP=1']
+      config.build_settings['OTHER_CPLUSPLUSFLAGS'] = ['$(inherited)', '-DFOLLY_NO_CONFIG', '-DFOLLY_MOBILE=1', '-DFOLLY_USE_LIBCPP=1']
+      
+      # ⚠️ GCC_OPTIMIZATION_LEVEL düzeltmesi
+      config.build_settings['GCC_OPTIMIZATION_LEVEL'] = '0'
+      
+      # ⚠️ Dead code stripping
+      config.build_settings['DEAD_CODE_STRIPPING'] = 'YES'
+      
+      # ⚠️ Build active architecture only
+      config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
     end
   end
 end
