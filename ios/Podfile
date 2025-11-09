@@ -39,8 +39,7 @@ target 'Runner' do
   pod 'Firebase/Firestore', '10.25.0'
   pod 'Firebase/Auth', '10.25.0'
   
-  # ⚠️ Google Maps
-  pod 'GoogleMaps', '7.4.0'
+  # ⚠️ Google Maps - Flutter plugin kendi yönetiyor (>= 8.4)
 end
 
 post_install do |installer|
