@@ -71,12 +71,11 @@ class AdvancedNotificationService {
       
       // ⚠️ PLATFORM-SPECIFIC INITIALIZATION
       if (Platform.isIOS) {
-        // iOS initialization
+        // iOS initialization (iOS 10+)
         const iosSettings = DarwinInitializationSettings(
           requestAlertPermission: true,
           requestBadgePermission: true,
           requestSoundPermission: true,
-          onDidReceiveLocalNotification: _onIOSLocalNotification,
         );
         
         await _localNotifications.initialize(
@@ -128,12 +127,6 @@ class AdvancedNotificationService {
     } catch (e) {
       print('❌ Sürücü bildirim servisi hatası: $e');
     }
-  }
-  
-  // ⚠️ iOS LOCAL NOTIFICATION CALLBACK
-  static void _onIOSLocalNotification(int id, String? title, String? body, String? payload) async {
-    // iOS 9 ve altı için (eski cihazlar)
-    print('📱 iOS Local Notification alındı: $title - $body');
   }
   
   // ANDROID BİLDİRİM KANALLARI - SÜRÜCÜ KANALLARI!
