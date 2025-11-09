@@ -1,0 +1,56 @@
+# Flutter build klasörleri - UZUN DOSYA YOLLARI!
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# iOS/Xcode
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/flutter_export_environment.sh
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+**/*sync/
+.sconsign.dblite
+.tags*
+**/.vagrant/
+**/DerivedData/
+*.hmap
+*.ipa
+*.xcarchive
+*.xcscmblueprint
+*.xcuserstate
+*.mobileprovision
+*.orig.*
+*.pyc
+*.hprof
+**/Pods/
+
+# Android (gereksiz - sadece iOS için)
+android/
+
+# VSCode
+.vscode/
+
+# Misc
+*.log
+*.swp
+.DS_Store
+.atom/
+.idea
+.packages
+.pub/
+Thumbs.db
+

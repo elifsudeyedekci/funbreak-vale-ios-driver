@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>FunBreak Vale Şoför</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.funbreak.vale.iosdriver</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>FunBreak Vale Şoför</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	
+	<!-- ⚠️ KONUM İZİNLERİ - SÜRÜCÜ İÇİN ZORUNLU (HER ZAMAN ERİŞİM)! -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Şoför uygulaması için konum erişimi zorunludur. Müşteriler size yol tarif edebilmeli ve konumunuzu görebilmelidir.</string>
+	
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Arka planda konum takibi için gerekli. Yolculuk sırasında müşteri sizi takip edebilmeli ve güvenlik için her zaman konum paylaşımı zorunludur.</string>
+	
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Şoför olarak her zaman konum paylaşımı yapmalısınız. Müşteri güvenliği ve talep sistemi için kesintisiz konum erişimi zorunludur.</string>
+	
+	<!-- ⚠️ KAMERA İZNİ - MESAJLAŞMA FOTOĞRAF ÇEKİMİ -->
+	<key>NSCameraUsageDescription</key>
+	<string>Müşteri ile mesajlaşırken fotoğraf çekmek için kamera erişimi gerekiyor.</string>
+	
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Fotoğraf gönderebilmek için galeri erişimi gerekiyor.</string>
+	
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Çekilen fotoğrafları galeriye kaydetmek için izin gerekiyor.</string>
+	
+	<!-- ⚠️ MİKROFON İZNİ - SESLİ MESAJ -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Müşteri ile sesli mesaj göndermek için mikrofon erişimi gerekiyor.</string>
+	
+	<!-- ⚠️ TELEFON İZNİ - KÖPRÜ ARAMA -->
+	<key>NSContactsUsageDescription</key>
+	<string>Müşteri ile iletişim için telefon erişimi gerekiyor.</string>
+	
+	<!-- ⚠️ ARKA PLAN MODLARı - SÜRÜCÜ HER ZAMAN AKTİF! -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>location</string>
+		<string>processing</string>
+		<string>audio</string>
+	</array>
+	
+	<!-- ⚠️ BİLDİRİM SES DOSYASI -->
+	<key>UILocalNotificationDefaultSoundName</key>
+	<string>notification.caf</string>
+	
+	<!-- ⚠️ Google Maps EMBED -->
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
+	
+	<!-- ⚠️ HTTP CLEAR TEXT (API için) -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>admin.funbreakvale.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>
+
