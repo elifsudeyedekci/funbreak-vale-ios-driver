@@ -33,8 +33,14 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   
-  # ⚠️ Google Maps için (gerekirse)
-  # pod 'GoogleMaps', '~> 7.3.0'
+  # ⚠️ Firebase versiyonlarını kilitle (-G hatası düzeltmesi)
+  pod 'Firebase/Core', '10.25.0'
+  pod 'Firebase/Messaging', '10.25.0'
+  pod 'Firebase/Firestore', '10.25.0'
+  pod 'Firebase/Auth', '10.25.0'
+  
+  # ⚠️ Google Maps
+  pod 'GoogleMaps', '7.4.0'
 end
 
 post_install do |installer|
