@@ -12,11 +12,11 @@ import GoogleMaps  // ⚠️ Google Maps import!
     
     // ⚠️ Firebase initialization
     FirebaseApp.configure()
-    print("✅ Firebase configured in iOS (ŞOFÖR)")
+    print("✅ Firebase configured in iOS")
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
-    print("✅ Google Maps configured in iOS (ŞOFÖR)")
+    print("✅ Google Maps configured in iOS")
     
     // Flutter plugin registration
     GeneratedPluginRegistrant.register(with: self)
@@ -24,10 +24,10 @@ import GoogleMaps  // ⚠️ Google Maps import!
     // ⚠️ Push notification setup (iOS 10+)
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
-      print("✅ UNUserNotificationCenter delegate set (ŞOFÖR)")
+      print("✅ UNUserNotificationCenter delegate set")
     }
     
-    // ⚠️ Background fetch için minimum interval ayarla (Sürücü her zaman aktif!)
+    // ⚠️ Background fetch için minimum interval ayarla
     application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -41,7 +41,7 @@ import GoogleMaps  // ⚠️ Google Maps import!
     // APNs token'ı Firebase'e gönder
     let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
     let token = tokenParts.joined()
-    print("📱 ŞOFÖR APNs Device Token: \(token)")
+    print("📱 APNs Device Token: \(token)")
     
     // Firebase Messaging'e token kaydet
     #if canImport(FirebaseMessaging)
@@ -52,14 +52,13 @@ import GoogleMaps  // ⚠️ Google Maps import!
   // ⚠️ APNs Registration Failure
   override func application(_ application: UIApplication, 
                             didFailToRegisterForRemoteNotificationsWithError error: Error) {
-    print("❌ ŞOFÖR Failed to register for remote notifications: \(error)")
+    print("❌ Failed to register for remote notifications: \(error)")
   }
   
-  // ⚠️ Background Fetch (Sürücü için önemli - her zaman konum güncelleme)
+  // ⚠️ Background Fetch
   override func application(_ application: UIApplication, 
                             performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-    print("📦 ŞOFÖR Background fetch triggered - konum güncelleniyor...")
+    print("📦 Background fetch triggered")
     completionHandler(.newData)
   }
 }
-
