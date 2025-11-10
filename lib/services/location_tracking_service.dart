@@ -131,7 +131,7 @@ class LocationTrackingService {
       print('Konum gönderiliyor: ${position.latitude}, ${position.longitude}');
       
       final response = await http.post(
-        Uri.parse('$baseUrl/update_driver_location.php'),
+        Uri.parse('$baseUrl/update_location.php'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'driver_id': int.tryParse(driverId) ?? driverId,
