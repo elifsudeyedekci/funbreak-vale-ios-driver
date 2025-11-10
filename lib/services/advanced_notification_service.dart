@@ -502,7 +502,6 @@ class AdvancedNotificationService {
       print('   Başlık: ${notification.title}');
       print('   Type: $notificationType');
       print('   Ses: ✅ Titreşim: ✅ LED: ✅ Importance: MAX');
-    }
   }
   
   // SÜRÜCÜ AKSİYON HANDLER
