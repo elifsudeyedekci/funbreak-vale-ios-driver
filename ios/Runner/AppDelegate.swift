@@ -3,6 +3,7 @@ import UIKit
 import Firebase  // ⚠️ Firebase import!
 import FirebaseMessaging  // ⚠️ Firebase Messaging import!
 import GoogleMaps  // ⚠️ Google Maps import!
+import UserNotifications  // ⚠️ UserNotifications import!
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, MessagingDelegate {
@@ -11,9 +12,13 @@ import GoogleMaps  // ⚠️ Google Maps import!
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // ⚠️ Firebase initialization - Flutter kendi halleder (main.dart'ta)!
-    // Firebase.configure() iOS'te CRASH yapıyor - Flutter plugin otomatik initialize eder!
-    print("📱 iOS ŞOFÖR: Firebase initialization Flutter plugin tarafından otomatik yapılacak")
+    // ⚠️ Firebase initialization - TRY-CATCH ile güvenli!
+    do {
+      try FirebaseApp.configure()
+      print("✅ ŞOFÖR Firebase native configured")
+    } catch {
+      print("⚠️ ŞOFÖR Firebase already configured or error: \(error)")
+    }
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
