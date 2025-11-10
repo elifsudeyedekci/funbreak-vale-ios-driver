@@ -12,7 +12,7 @@ class PermissionCheckScreen extends StatefulWidget {
   State<PermissionCheckScreen> createState() => _PermissionCheckScreenState();
 }
 
-class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
+class _PermissionCheckScreenState extends State<PermissionCheckScreen> with WidgetsBindingObserver {
   bool _locationAlwaysGranted = false;
   bool _backgroundAppGranted = false;
   bool _notificationGranted = false;
@@ -21,7 +21,23 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // App lifecycle listener
     _checkAllPermissions();
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Settings'ten geri döndüğünde izinleri tekrar kontrol et!
+    if (state == AppLifecycleState.resumed) {
+      print('📱 App resumed - İzinler tekrar kontrol ediliyor...');
+      _checkAllPermissions();
+    }
   }
 
   @override
@@ -75,8 +91,10 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
                     // 2. Arka Plan İzni  
                     _buildPermissionCard(
                       icon: Icons.apps,
-                      title: 'Arka Plan Uygulaması İzni',
-                      description: 'Arka planda talep alabilmek için "Kısıtlanmamış" arka plan izni gerekiyor.',
+                      title: Platform.isAndroid ? 'Arka Plan Uygulaması İzni' : 'Arka Planda Yenileme',
+                      description: Platform.isAndroid 
+                        ? 'Arka planda talep alabilmek için "Kısıtlanmamış" arka plan izni gerekiyor.'
+                        : 'Arka planda talep alabilmek için "Arka Planda Yenileme" açık olmalı.',
                       isGranted: _backgroundAppGranted,
                       onTap: _requestBackgroundPermission,
                       criticalText: 'ZORUNLU: Arka plan çalışmaz!',
@@ -400,9 +418,14 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
     try {
       print('🔔 BİLDİRİM İZNİ İSTENİYOR...');
       
-      var status = await Permission.notification.request();
-      
-      if (status.isDenied || status.isPermanentlyDenied) {
+      if (Platform.isAndroid) {
+        var status = await Permission.notification.request();
+        
+        if (status.isDenied || status.isPermanentlyDenied) {
+          _showNotificationPermissionDialog();
+        }
+      } else if (Platform.isIOS) {
+        // iOS'ta direkt Settings'e yönlendir (Permission.notification iOS'ta güvenilir değil!)
         _showNotificationPermissionDialog();
       }
       
