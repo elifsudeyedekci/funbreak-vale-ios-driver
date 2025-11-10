@@ -1,10 +1,11 @@
 import Flutter
 import UIKit
 import Firebase  // ⚠️ Firebase import!
+import FirebaseMessaging  // ⚠️ Firebase Messaging import!
 import GoogleMaps  // ⚠️ Google Maps import!
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, MessagingDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -70,5 +71,11 @@ import GoogleMaps  // ⚠️ Google Maps import!
                             performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
     print("📦 Background fetch triggered")
     completionHandler(.newData)
+  }
+  
+  // ⚠️ MessagingDelegate - FCM Token Refresh
+  func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    print("📱 ŞOFÖR FCM Token güncellendi: \(fcmToken?.prefix(20) ?? "nil")...")
+    // Token'ı backend'e göndermek için kullanılabilir
   }
 }
