@@ -145,7 +145,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           '0',
         ) ??
         0.0;
-    _calculatedTotalPrice = initialTotal;
+    // ✅ Eğer 0 ise base_price kullan (minimum başlangıç fiyatı)
+    _calculatedTotalPrice = initialTotal > 0 ? initialTotal : 50.0;
+    print('💰 [ŞOFÖR] İlk fiyat: ₺${_calculatedTotalPrice} (initialTotal: ₺$initialTotal)');
     _initializeWithRestore();
   }
   
@@ -2216,11 +2218,22 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       final driverLat = _driverLocation?.latitude ?? pickupLat;
       final driverLng = _driverLocation?.longitude ?? pickupLng;
 
-      double currentKm = 0.0;
+      final backendKm = double.tryParse(_currentRideStatus['current_km']?.toString() ?? 
+                                        widget.rideDetails['current_km']?.toString() ?? '0') ?? 0.0;
+      
+      double currentKm = backendKm;
+      
       if (pickupLat != 0.0 && pickupLng != 0.0 && destLat != 0.0 && destLng != 0.0) {
         final totalDistance = _calculateDistanceMeters(pickupLat, pickupLng, destLat, destLng) / 1000.0;
         final travelledDistance = _calculateDistanceMeters(pickupLat, pickupLng, driverLat, driverLng) / 1000.0;
-        currentKm = travelledDistance.clamp(0.0, totalDistance);
+        final calculatedKm = travelledDistance.clamp(0.0, totalDistance);
+        
+        if (calculatedKm > backendKm) {
+          currentKm = calculatedKm;
+          print('✅ KM ARTIŞI: Backend=$backendKm → Yeni=$currentKm');
+        } else {
+          print('🔒 KM KORUMA: Backend=$backendKm korundu (Hesaplanan=$calculatedKm)');
+        }
       }
       
         final currentPriceValue = _calculatedTotalPrice > 0
@@ -2228,7 +2241,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             : double.tryParse((widget.rideDetails['calculated_price'] ?? _currentRideStatus['calculated_price'] ?? widget.rideDetails['estimated_price'] ?? 0).toString()) ?? 0.0;
         final driverNetValue = (_estimatedEarnings + _waitingFee).clamp(0, double.infinity);
 
-        print('📤 ŞOFÖR: Real-time data gönderiliyor - Ride: $rideId, Bekleme: $_waitingMinutes dk (Active: $_isWaitingActive), KM: ${currentKm.toStringAsFixed(1)}');
+        print('📤 ŞOFÖR: Real-time data gönderiliyor - Ride: $rideId, Bekleme: $_waitingMinutes dk (Active: $_isWaitingActive), KM: ${currentKm.toStringAsFixed(1)} (Backend: $backendKm)');
         
         final response = await http.post(
         Uri.parse('https://admin.funbreakvale.com/api/update_ride_realtime_data.php'),
@@ -2375,6 +2388,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         totalKm: totalKm,
         waitingMinutes: _waitingMinutes,
         totalEarnings: totalEarningsToSend, // ✅ BRÜT fiyat (komisyon öncesi)
+        dropoffLat: _driverLocation?.latitude, // ✅ BIRAKILAN KONUM
+        dropoffLng: _driverLocation?.longitude, // ✅ BIRAKILAN KONUM
       );
       
       print('📦 ŞOFÖR: completeRide yanıtı: $completionData');
@@ -2526,48 +2541,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       final customerId = widget.rideDetails['customer_id']?.toString() ?? '0';
       final customerPhone = widget.rideDetails['customer_phone'] ?? '';
       
-      // Müşteriye bildirim göster
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 2,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      '📞 Köprü sistemi aktif',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text('Destek: $supportPhone çağrılıyor...'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.blue,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 5),
-        ),
-      );
-      
       // Destek hattını ara (köprü sistemi)
       await _executePhoneCall(
         supportPhone,
-        onDial: () => _logBridgeInfo(supportPhone, customerPhone: customerPhone),
+        onDial: () => print('Köprü arandı'),
       );
-      
-      print('🌉 KÖPRÜ SİSTEMİ:');
-      print('   📞 Destek Hat: $supportPhone');
-      print('   🆔 Ride ID: $rideId');
-      print('   👤 Customer ID: $customerId');
-      print('   📱 Customer Phone: $customerPhone');
       
     } catch (e) {
       print('❌ [ŞOFÖR] Köprü sistemi hatası: $e');
@@ -3908,19 +3886,42 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   
   void _openDirectNavigation(double lat, double lng, String label) async {
     try {
-      print('🗺️ [ŞOFÖR] Navigasyon açılıyor: lat=$lat lng=$lng label=$label');
+      print('🗺️ [ŞOFÖR] Navigasyon seçim dialog açılıyor: lat=$lat lng=$lng label=$label');
       
-      // Google Maps intent ile aç
-      final uri = Uri.parse('google.navigation:q=$lat,$lng');
-      final fallback = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-      
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        print('🧭 [ŞOFÖR] Navigasyon açılıyor → $uri');
-      } else {
-        await launchUrl(fallback, mode: LaunchMode.externalApplication);
-        print('🧭 [ŞOFÖR] Navigasyon fallback → $fallback');
-      }
+      // Yandex Maps veya Google Maps seçim dialog'u
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('🗺️ Harita Uygulaması Seç'),
+            content: const Text('Hangi harita uygulaması ile navigasyon başlatalım?'),
+            actions: [
+              TextButton.icon(
+                icon: const Icon(Icons.map, color: Colors.red),
+                label: const Text('Yandex Maps'),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _openYandexMaps(lat, lng, label);
+                },
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.navigation, color: Colors.blue),
+                label: const Text('Google Maps'),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await _openGoogleMaps(lat, lng, label);
+                },
+              ),
+              TextButton(
+                child: const Text('İptal'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
     } catch (e) {
       print('❌ [ŞOFÖR] Navigasyon hatası: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3929,6 +3930,64 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+  
+  // 🗺️ YANDEX MAPS AÇMA
+  Future<void> _openYandexMaps(double lat, double lng, String label) async {
+    try {
+      print('🗺️ [ŞOFÖR] Yandex Maps açılıyor: $label');
+      
+      // Yandex Maps deep link (iOS ve Android)
+      final yandexUri = Uri.parse('yandexmaps://maps.yandex.com/?pt=$lng,$lat&z=16&l=map');
+      final yandexWebFallback = Uri.parse('https://yandex.com/maps/?pt=$lng,$lat&z=16&l=map');
+      
+      if (await canLaunchUrl(yandexUri)) {
+        await launchUrl(yandexUri, mode: LaunchMode.externalApplication);
+        print('✅ [ŞOFÖR] Yandex Maps app açıldı');
+      } else {
+        await launchUrl(yandexWebFallback, mode: LaunchMode.externalApplication);
+        print('✅ [ŞOFÖR] Yandex Maps web açıldı');
+      }
+    } catch (e) {
+      print('❌ [ŞOFÖR] Yandex Maps hatası: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Yandex Maps açılamadı: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  // 🧭 GOOGLE MAPS AÇMA
+  Future<void> _openGoogleMaps(double lat, double lng, String label) async {
+    try {
+      print('🗺️ [ŞOFÖR] Google Maps açılıyor: $label');
+      
+      // Google Maps deep link (iOS ve Android)
+      final googleUri = Uri.parse('google.navigation:q=$lat,$lng');
+      final googleWebFallback = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+      
+      if (await canLaunchUrl(googleUri)) {
+        await launchUrl(googleUri, mode: LaunchMode.externalApplication);
+        print('✅ [ŞOFÖR] Google Maps app açıldı');
+      } else {
+        await launchUrl(googleWebFallback, mode: LaunchMode.externalApplication);
+        print('✅ [ŞOFÖR] Google Maps web açıldı');
+      }
+    } catch (e) {
+      print('❌ [ŞOFÖR] Google Maps hatası: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Google Maps açılamadı: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   

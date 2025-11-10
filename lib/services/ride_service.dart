@@ -231,12 +231,15 @@ class RideService {
     required double totalKm,
     required int waitingMinutes,
     required double totalEarnings,
+    double? dropoffLat,  // ✅ BIRAKILAN KONUM
+    double? dropoffLng,  // ✅ BIRAKILAN KONUM
   }) async {
     print('🚀 === COMPLETE RIDE SERVICE BAŞLADI ===');
     print('   🆔 Ride ID: $rideId');
     print('   📏 Total KM: $totalKm');
     print('   ⏰ Waiting: $waitingMinutes');
     print('   💰 Earnings: $totalEarnings');
+    print('   📍 Dropoff: Lat=$dropoffLat, Lng=$dropoffLng');
     
     try {
       final requestBody = {
@@ -244,6 +247,8 @@ class RideService {
         'total_km': totalKm.toStringAsFixed(2),
         'waiting_minutes': waitingMinutes,
         'total_earnings': totalEarnings,
+        if (dropoffLat != null) 'dropoff_lat': dropoffLat,
+        if (dropoffLng != null) 'dropoff_lng': dropoffLng,
       };
       
       print('📤 REQUEST BODY: ${jsonEncode(requestBody)}');
