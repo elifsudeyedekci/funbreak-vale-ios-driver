@@ -3943,12 +3943,12 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     } catch (e) {
       print('❌ [ŞOFÖR] Yandex Maps hatası: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
             content: Text('❌ Yandex Maps açılamadı: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+          backgroundColor: Colors.red,
+        ),
+      );
       }
     }
   }

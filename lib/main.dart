@@ -852,7 +852,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               if (retryToken != null) {
                 print('🔄 ŞOFÖR: İkinci FCM token denemesi BAŞARILI!');
                 await _saveFCMTokenToDatabase(retryToken);
-              }
+          }
             });
           }
         } catch (e) {
