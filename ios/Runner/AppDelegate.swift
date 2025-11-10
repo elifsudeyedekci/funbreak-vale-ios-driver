@@ -17,6 +17,7 @@ import GoogleMaps  // ⚠️ Google Maps import!
       print("✅ Firebase configured in iOS (native - ŞOFÖR)")
     } else {
       print("⚠️ Firebase already configured - skipping (ŞOFÖR)")
+    }
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
