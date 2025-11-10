@@ -199,7 +199,7 @@ void main() async {
       print('⚠️ Firebase init hatası: $e');
     }
   } else {
-    print('📱 iOS ŞOFÖR: Firebase.configure() AppDelegate'te yapıldı');
+    print('📱 iOS ŞOFÖR: Firebase.configure() AppDelegate tarafından yapıldı');
   }
   
   // GELİŞMİŞ SÜRÜCÜ BİLDİRİM SERVİSİ BAŞLAT!
