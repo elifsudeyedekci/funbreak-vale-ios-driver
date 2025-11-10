@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:io'; // Platform kontrolü için
 
 class PermissionCheckScreen extends StatefulWidget {
   final VoidCallback? onPermissionsGranted;
@@ -318,12 +319,17 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
       print('📍 Konum İzni Durumu: $locationPermission');
       print('   Her Zaman İzin: ${_locationAlwaysGranted ? "VAR" : "YOK"}');
       
-      // 2. Arka Plan İzni Kontrol
-      var backgroundStatus = await Permission.ignoreBatteryOptimizations.status;
-      _backgroundAppGranted = backgroundStatus.isGranted;
-      
-      print('📱 Arka Plan İzni Durumu: $backgroundStatus');
-      print('   Pil Optimizasyonu İgnore: ${_backgroundAppGranted ? "VAR" : "YOK"}');
+      // 2. Arka Plan İzni Kontrol (Platform-Specific!)
+      if (Platform.isAndroid) {
+        var backgroundStatus = await Permission.ignoreBatteryOptimizations.status;
+        _backgroundAppGranted = backgroundStatus.isGranted;
+        print('📱 Android Arka Plan İzni: $backgroundStatus');
+        print('   Pil Optimizasyonu İgnore: ${_backgroundAppGranted ? "VAR" : "YOK"}');
+      } else if (Platform.isIOS) {
+        // iOS'te arka planda yenileme Info.plist'te zaten var (UIBackgroundModes)
+        // Kullanıcı Settings'te aktif etmesi gerekiyor
+        _backgroundAppGranted = true; // iOS için varsayılan true, Settings'te kontrol et deriz
+        print('📱 iOS Arka Planda Yenileme: Settings → Genel → Arka Planda Yenileme → FunBreak Vale → Aç');
       
       // 3. Bildirim İzni Kontrol
       var notificationStatus = await Permission.notification.status;
@@ -371,9 +377,14 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
     try {
       print('📱 ARKA PLAN İZNİ İSTENİYOR...');
       
-      var status = await Permission.ignoreBatteryOptimizations.request();
-      
-      if (status.isDenied || status.isPermanentlyDenied) {
+      if (Platform.isAndroid) {
+        var status = await Permission.ignoreBatteryOptimizations.request();
+        
+        if (status.isDenied || status.isPermanentlyDenied) {
+          _showBackgroundPermissionDialog();
+        }
+      } else if (Platform.isIOS) {
+        // iOS'te Settings'e yönlendir
         _showBackgroundPermissionDialog();
       }
       
@@ -476,7 +487,9 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Arka planda talep alabilmek için "Pil optimizasyonu" izninin açık olması gerekiyor.',
+              Platform.isAndroid 
+                ? 'Arka planda talep alabilmek için "Pil optimizasyonu" izninin açık olması gerekiyor.'
+                : 'Arka planda talep alabilmek için "Arka Planda Yenileme" izninin açık olması gerekiyor.',
               style: TextStyle(fontSize: 16, height: 1.4),
             ),
             
@@ -493,7 +506,9 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('📱 Ayarlar Yolu:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text('Ayarlar → Pil → Pil optimizasyonu → FunBreak Vale → "Kısıtlama"'),
+                  Text(Platform.isAndroid 
+                    ? 'Ayarlar → Pil → Pil optimizasyonu → FunBreak Vale → "Kısıtlama"'
+                    : 'Ayarlar → Genel → Arka Planda Yenileme → FunBreak Vale → Aç'),
                 ],
               ),
             ),

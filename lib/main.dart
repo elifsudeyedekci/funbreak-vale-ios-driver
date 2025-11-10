@@ -73,18 +73,19 @@ Future<void> _driverFirebaseBackgroundHandler(RemoteMessage message) async {
   _ensureBackgroundSharedPrefsRegistered();
 
   try {
-    // Firebase'i başlat - duplicate safe
-    try {
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-        print('🔥 Firebase background handler için başlatıldı');
-      } else {
-        print('🔥 Firebase zaten başlatılmış - background handler ready!');
-      }
-    } catch (e) {
-      // Duplicate app hatası normalize - çalışmaya devam et
+    // Firebase'i başlat - duplicate safe (iOS'te AppDelegate'te yapıldı)
+    if (Platform.isAndroid) {
+      try {
+        if (Firebase.apps.isEmpty) {
+          await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          );
+          print('🔥 Firebase background handler için başlatıldı (Android)');
+        } else {
+          print('🔥 Firebase zaten başlatılmış - background handler ready!');
+        }
+      } catch (e) {
+        // Duplicate app hatası normalize - çalışmaya devam et
       if (e.toString().contains('duplicate-app')) {
         print('🔥 Firebase already initialized - background handler working!');
       } else {
@@ -187,13 +188,18 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_driverFirebaseBackgroundHandler);
   print('BACKGROUND HANDLER MAIN DE KAYDEDILDI!');
   
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print('✅ Firebase başlatıldı');
-  } catch (e) {
-    print('⚠️ Firebase init hatası (muhtemelen duplicate - OK): $e');
+  // ⚠️ iOS'te Firebase.configure() AppDelegate'te yapılıyor!
+  if (Platform.isAndroid) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      print('✅ Firebase başlatıldı (Android - ŞOFÖR)');
+    } catch (e) {
+      print('⚠️ Firebase init hatası: $e');
+    }
+  } else {
+    print('📱 iOS ŞOFÖR: Firebase.configure() AppDelegate'te yapıldı');
   }
   
   // GELİŞMİŞ SÜRÜCÜ BİLDİRİM SERVİSİ BAŞLAT!

@@ -10,9 +10,9 @@ import GoogleMaps  // ⚠️ Google Maps import!
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // ⚠️ Firebase initialization - main.dart'ta yapılıyor (Flutter tarafında)
-    // FirebaseApp.configure() // ← DUPLICATE! main.dart'ta zaten var
-    print("⚠️ Firebase initialization skipped - main.dart handles it (ŞOFÖR)")
+    // ⚠️ Firebase initialization - NATIVE iOS tarafında configure ediyoruz!
+    FirebaseApp.configure()
+    print("✅ Firebase configured in iOS (native - ŞOFÖR)")
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
@@ -24,8 +24,20 @@ import GoogleMaps  // ⚠️ Google Maps import!
     // ⚠️ Push notification setup (iOS 10+)
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
-      print("✅ UNUserNotificationCenter delegate set")
+      Messaging.messaging().delegate = self as MessagingDelegate
+      print("✅ UNUserNotificationCenter delegate + Firebase Messaging delegate set (ŞOFÖR)")
     }
+    
+    // ⚠️ Push notification izni iste!
+    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+      print("📱 ŞOFÖR Push izni: \(granted ? "✅ VERİLDİ" : "❌ REDDEDİLDİ")")
+      if let error = error {
+        print("❌ Push izin hatası: \(error)")
+      }
+    }
+    
+    // ⚠️ APNs registration
+    application.registerForRemoteNotifications()
     
     // ⚠️ Background fetch için minimum interval ayarla
     application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
@@ -38,15 +50,13 @@ import GoogleMaps  // ⚠️ Google Maps import!
                             didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
     
-    // APNs token'ı Firebase'e gönder
+    // APNs token'ı Firebase Messaging'e kaydet
+    Messaging.messaging().apnsToken = deviceToken
+    
     let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
     let token = tokenParts.joined()
-    print("📱 APNs Device Token: \(token)")
-    
-    // Firebase Messaging'e token kaydet
-    #if canImport(FirebaseMessaging)
-    Messaging.messaging().apnsToken = deviceToken
-    #endif
+    print("📱 ŞOFÖR APNs Device Token registered: \(token.prefix(20))...")
+    print("✅ APNs token Firebase'e kaydedildi (ŞOFÖR)")
   }
   
   // ⚠️ APNs Registration Failure
