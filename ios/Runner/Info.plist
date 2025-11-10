@@ -86,6 +86,13 @@
 		<string>audio</string>
 	</array>
 	
+	<!-- ⚠️ BACKGROUND TASK SCHEDULER (processing mode için zorunlu!) -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.funbreak.vale.iosdriver.refresh</string>
+		<string>com.funbreak.vale.iosdriver.locationUpdate</string>
+	</array>
+	
 	<!-- ⚠️ BİLDİRİM SES DOSYASI -->
 	<key>UILocalNotificationDefaultSoundName</key>
 	<string>notification.caf</string>
