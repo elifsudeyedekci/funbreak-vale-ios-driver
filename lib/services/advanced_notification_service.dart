@@ -371,19 +371,29 @@ class AdvancedNotificationService {
     
     print('✅ [ŞOFÖR] Local notification gösteriliyor');
     
-    // iOS - BASIT GÖSTER!
+    // iOS - DETAYLI GÖSTER!
     if (Platform.isIOS) {
       try {
+        final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+        print('📱 [ŞOFÖR] iOS bildirim gösteriliyor - ID: $notificationId');
+        print('   Title: ${notification.title}');
+        print('   Body: ${notification.body}');
+        
         await _localNotifications.show(
-          DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          notificationId,
           notification.title ?? 'FunBreak Vale Sürücü',
           notification.body ?? '',
           NotificationDetails(
             iOS: DarwinNotificationDetails(
-              presentAlert: true,
+              presentAlert: true,  // iOS 13 ve altı için
+              presentBanner: true, // iOS 14+ için - EKRAN ÜSTÜNDE BANNER!
+              presentList: true,   // Notification Center'da göster
               presentBadge: true,
               presentSound: true,
               sound: 'notification.caf',
+              badgeNumber: 1,
+              subtitle: message.data['type'] ?? '',
+              threadIdentifier: 'funbreak_vale_driver',
             ),
           ),
           payload: jsonEncode(message.data),
@@ -433,7 +443,9 @@ class AdvancedNotificationService {
         // iOS için DarwinNotificationDetails
         details = NotificationDetails(
           iOS: DarwinNotificationDetails(
-            presentAlert: true,
+            presentAlert: true,  // iOS 13 ve altı
+            presentBanner: true, // iOS 14+ EKRAN BANNER!
+            presentList: true,   // Notification Center
             presentBadge: true,
             presentSound: true,
             sound: 'notification.caf',  // ⚠️ iOS .caf formatı!

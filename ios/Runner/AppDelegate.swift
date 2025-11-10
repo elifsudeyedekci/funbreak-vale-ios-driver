@@ -68,6 +68,21 @@ import UserNotifications  // ⚠️ UserNotifications import!
     print("❌ Failed to register for remote notifications: \(error)")
   }
   
+  // ⚠️ BACKGROUND REMOTE NOTIFICATION - UYGULAMA KAPALI/ARKA PLANDA!
+  override func application(_ application: UIApplication,
+                            didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+                            fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+    print("📱 === ŞOFÖR BACKGROUND REMOTE NOTIFICATION ALINDI ===")
+    print("   📊 UserInfo: \(userInfo)")
+    
+    // Firebase Messaging'e bildir
+    Messaging.messaging().appDidReceiveMessage(userInfo)
+    
+    // Flutter background handler çağrılacak
+    completionHandler(.newData)
+    print("✅ ŞOFÖR Background notification işlendi")
+  }
+  
   // ⚠️ Background Fetch
   override func application(_ application: UIApplication, 
                             performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
