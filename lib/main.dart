@@ -814,12 +814,21 @@ class _AuthWrapperState extends State<AuthWrapper> {
         
         if (permission.authorizationStatus == AuthorizationStatus.denied) {
           print('❌ SÜRÜCÜ: Notification permission DENIED!');
+          return; // Permission yoksa token alamazsın!
         } else {
           print('✅ SÜRÜCÜ: Notification permission GRANTED!');
         }
         
-        // FCM token al ve kaydet - TELEFON İÇİN DEBUG!
-        messaging.getToken().then((token) async {
+        // ⏱️ iOS'TA TOKEN ALMA 10 SANİYE SÜREBİLİR - AWAIT İLE BEKLEYELİM!
+        try {
+          final token = await messaging.getToken().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('⏱️ iOS FCM Token timeout - tekrar denenecek');
+              return null;
+            },
+          );
+          
           print('📱 === SÜRÜCÜ FCM TOKEN KONTROL ===');
           print('📱 FCM Token (ŞOFÖR): $token');
           
@@ -836,25 +845,21 @@ class _AuthWrapperState extends State<AuthWrapper> {
           } else {
             print('❌ ŞOFÖR: FCM Token alınamadı - KRITIK SORUN!');
             print('🚨 ŞOFÖR: Firebase bağlantı sorunu - bildirimler düşmeyecek!');
+            
+            // 5 saniye sonra tekrar dene
+            Future.delayed(const Duration(seconds: 5), () async {
+              final retryToken = await messaging.getToken();
+              if (retryToken != null) {
+                print('🔄 ŞOFÖR: İkinci FCM token denemesi BAŞARILI!');
+                await _saveFCMTokenToDatabase(retryToken);
+              }
+            });
           }
-        }).catchError((e) {
+        } catch (e) {
           print('❌ === SÜRÜCÜ FCM TOKEN CRİTİK HATA ===');
           print('🐛 HATA: $e');
           print('💡 ÇÖZÜM: Internet/Firebase permission kontrol et');
-        });
-
-        // EK GÜVENLİK: 5 SANİYE SONRA TEKRAR DENEME!
-        Future.delayed(const Duration(seconds: 5), () async {
-          try {
-            final token = await messaging.getToken();
-            if (token != null && token.isNotEmpty) {
-              print('🔄 ŞOFÖR: İkinci FCM token denemesi yapılıyor...');
-              await _saveFCMTokenToDatabase(token);
-            }
-          } catch (e) {
-            print('⚠️ ŞOFÖR: İkinci FCM token denemesi başarısız: $e');
-          }
-        });
+        }
         
         print('✅ ŞOFÖR Push notification handler\'ları TAMAMI kuruldu');
       } catch (e) {
