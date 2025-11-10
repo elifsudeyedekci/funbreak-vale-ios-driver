@@ -12,13 +12,10 @@ import UserNotifications  // ⚠️ UserNotifications import!
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // ⚠️ Firebase initialization - TRY-CATCH ile güvenli!
-    do {
-      try FirebaseApp.configure()
-      print("✅ ŞOFÖR Firebase native configured")
-    } catch {
-      print("⚠️ ŞOFÖR Firebase already configured or error: \(error)")
-    }
+    // ⚠️ Firebase initialization - FLUTTER PLUGIN KULLAN!
+    // Native Firebase.configure() iOS'ta CRASH yapıyor (NSException → Swift catch yakalamıyor)
+    // Flutter firebase_core plugin kendi initialize eder!
+    print("📱 ŞOFÖR iOS: Firebase initialization Flutter plugin tarafından yapılacak")
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
