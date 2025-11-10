@@ -73,7 +73,7 @@ Future<void> _driverFirebaseBackgroundHandler(RemoteMessage message) async {
   _ensureBackgroundSharedPrefsRegistered();
 
   try {
-    // Firebase'i başlat - duplicate safe (iOS'te AppDelegate'te yapıldı)
+    // Firebase'i başlat - duplicate safe (iOS'te AppDelegate tarafından yapıldı)
     if (Platform.isAndroid) {
       try {
         if (Firebase.apps.isEmpty) {
@@ -188,7 +188,7 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_driverFirebaseBackgroundHandler);
   print('BACKGROUND HANDLER MAIN DE KAYDEDILDI!');
   
-  // ⚠️ iOS'te Firebase.configure() AppDelegate'te yapılıyor!
+  // ⚠️ iOS'te Firebase.configure() AppDelegate tarafından yapılıyor!
   if (Platform.isAndroid) {
     try {
       await Firebase.initializeApp(
