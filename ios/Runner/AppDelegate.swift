@@ -11,9 +11,12 @@ import GoogleMaps  // ⚠️ Google Maps import!
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // ⚠️ Firebase initialization - NATIVE iOS tarafında configure ediyoruz!
-    FirebaseApp.configure()
-    print("✅ Firebase configured in iOS (native - ŞOFÖR)")
+    // ⚠️ Firebase initialization - SAFE configure (duplicate check!)
+    if FirebaseApp.app() == nil {
+      FirebaseApp.configure()
+      print("✅ Firebase configured in iOS (native - ŞOFÖR)")
+    } else {
+      print("⚠️ Firebase already configured - skipping (ŞOFÖR)")
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
