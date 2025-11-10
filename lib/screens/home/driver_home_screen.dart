@@ -45,7 +45,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
     // WidgetsBinding.instance.addObserver(this); → KALDIRILDI! main.dart'ta var
     _initializeAnimations();
     _getCurrentLocation();
-    _loadTodayStats();
+    
+    // GÜNLÜK KAZANÇ - FRAME SONRASI YÜKLENSİN!
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTodayStats();
+    });
+    
     _initializeRideService();
 
     // BACKEND'E BAŞLANGIÇ DURUMUNU BİLDİR!
