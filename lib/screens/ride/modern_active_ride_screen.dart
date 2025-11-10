@@ -12,6 +12,7 @@ import '../../services/company_contact_service.dart'; // ŞİRKET ARAMA SERVİS�
 import '../chat/ride_chat_screen.dart'; // GERÇEK MESAJLAŞMA!
 import '../../services/ride_service.dart';
 import '../../providers/driver_ride_provider.dart'; // AKTİF YOLCULUK TEMİZLEME İÇİN!
+import '../../services/location_tracking_service.dart'; // 📍 KONUM TRACKING İÇİN!
 import 'dart:math' as math;
 import '../../widgets/rating_dialog.dart';
 
@@ -126,6 +127,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     super.initState();
     WidgetsBinding.instance.addObserver(this); // ARKA PLAN OBSERVER!
     _initializeAnimations();
+    
+    // 📍 KRİTİK: KONUM TRAcKING BAŞLAT!
+    LocationTrackingService.startLocationTracking();
+    print('📍 Aktif yolculuk - Location tracking başlatıldı');
     
     // DEBUG: Widget verilerini kontrol et
     print('🔍 ŞOFÖR: Widget rideDetails debug:');
