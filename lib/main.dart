@@ -224,28 +224,42 @@ void main() async {
 // Basit ve hızlı izin sistemi
 Future<void> requestPermissions() async {
   try {
-    // SÜRÜCÜ İÇİN KRİTİK BILDIRIM İZINLERI!
-    final notificationStatus = await Permission.notification.request();
-    print('📱 SÜRÜCÜ Bildirim izni: $notificationStatus');
-    
-    if (notificationStatus.isDenied) {
-      print('❌ SÜRÜCÜ: Bildirim izni reddedildi - background bildirimler çalışmayacak!');
-    } else {
-      print('✅ SÜRÜCÜ: Bildirim izni verildi - background bildirimler çalışacak!');
+    // SÜRÜCÜ İÇİN KRİTİK BILDIRIM İZINLERI (Platform-aware!)
+    if (Platform.isAndroid) {
+      final notificationStatus = await Permission.notification.request();
+      print('📱 Android SÜRÜCÜ Bildirim izni: $notificationStatus');
+      
+      if (notificationStatus.isDenied) {
+        print('❌ SÜRÜCÜ: Bildirim izni reddedildi - background bildirimler çalışmayacak!');
+      } else {
+        print('✅ SÜRÜCÜ: Bildirim izni verildi - background bildirimler çalışacak!');
+      }
+    } else if (Platform.isIOS) {
+      // iOS'ta Firebase Messaging üzerinden izin istenir
+      final fcmSettings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      print('📱 iOS SÜRÜCÜ Bildirim izni: ${fcmSettings.authorizationStatus}');
     }
     
-    // PİL OPTİMİZASYONU BYPASS - BACKGROUND NOTIFICATION İÇİN KRİTİK!
-    try {
-      final batteryOptimization = await Permission.ignoreBatteryOptimizations.request();
-      print('🔋 SÜRÜCÜ Pil optimizasyonu bypass: $batteryOptimization');
-      
-      if (batteryOptimization.isDenied) {
-        print('⚠️ SÜRÜCÜ: Pil optimizasyonu bypass edilmedi - background bildirimler kısıtlanabilir!');
-      } else {
-        print('✅ SÜRÜCÜ: Pil optimizasyonu bypass edildi - background bildirimler güvende!');
+    // PİL OPTİMİZASYONU BYPASS - SADECE ANDROID!
+    if (Platform.isAndroid) {
+      try {
+        final batteryOptimization = await Permission.ignoreBatteryOptimizations.request();
+        print('🔋 Android SÜRÜCÜ Pil optimizasyonu bypass: $batteryOptimization');
+        
+        if (batteryOptimization.isDenied) {
+          print('⚠️ SÜRÜCÜ: Pil optimizasyonu bypass edilmedi - background bildirimler kısıtlanabilir!');
+        } else {
+          print('✅ SÜRÜCÜ: Pil optimizasyonu bypass edildi - background bildirimler güvende!');
+        }
+      } catch (e) {
+        print('❌ Pil optimizasyonu kontrol hatası: $e');
       }
-    } catch (e) {
-      print('❌ Pil optimizasyonu kontrol hatası: $e');
+    } else if (Platform.isIOS) {
+      print('📱 iOS: Arka planda yenileme Info.plist UIBackgroundModes var (programatik kontrol gerekmez)');
     }
     
     // Konum izni
@@ -1060,10 +1074,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (_permissionsChecked) return;
     
     try {
-      // Bildirim izni kontrol et
-      var notificationStatus = await Permission.notification.status;
-      if (notificationStatus.isDenied) {
-        await _requestPermissionWithDialog('Bildirim', Permission.notification);
+      // Bildirim izni kontrol et (Platform-aware!)
+      if (Platform.isAndroid) {
+        var notificationStatus = await Permission.notification.status;
+        if (notificationStatus.isDenied) {
+          await _requestPermissionWithDialog('Bildirim', Permission.notification);
+        }
+      } else if (Platform.isIOS) {
+        // iOS'ta Firebase Messaging ile kontrol
+        final fcmSettings = await FirebaseMessaging.instance.getNotificationSettings();
+        if (fcmSettings.authorizationStatus != AuthorizationStatus.authorized &&
+            fcmSettings.authorizationStatus != AuthorizationStatus.provisional) {
+          await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
+        }
       }
       
       // KONUM İZNİ "HER ZAMAN" ZORUNLU KONTROL!
@@ -1078,10 +1101,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       
       debugPrint('✅ Konum izni "Her Zaman" - devam edilebilir');
       
-      // Arka plan izinleri kontrol et
-      var batteryOptimization = await Permission.ignoreBatteryOptimizations.status;
-      if (batteryOptimization.isDenied) {
-        await _requestPermissionWithDialog('Pil Optimizasyonu', Permission.ignoreBatteryOptimizations);
+      // Arka plan izinleri kontrol et (SADECE ANDROID!)
+      if (Platform.isAndroid) {
+        var batteryOptimization = await Permission.ignoreBatteryOptimizations.status;
+        if (batteryOptimization.isDenied) {
+          await _requestPermissionWithDialog('Pil Optimizasyonu', Permission.ignoreBatteryOptimizations);
+        }
       }
       
       _permissionsChecked = true;
@@ -1856,22 +1881,35 @@ Future<void> _checkPermissionsInBackground() async {
       print('📍 [ŞOFÖR] Konum izni istendi');
     }
     
-    // Bildirim izni
-    final notificationStatus = await Permission.notification.status;
-    if (notificationStatus.isDenied) {
-      await Permission.notification.request();
-      print('🔔 [ŞOFÖR] Bildirim izni istendi');
+    // Bildirim izni (Platform-aware!)
+    if (Platform.isAndroid) {
+      final notificationStatus = await Permission.notification.status;
+      if (notificationStatus.isDenied) {
+        await Permission.notification.request();
+        print('🔔 [ŞOFÖR Android] Bildirim izni istendi');
+      }
+    } else if (Platform.isIOS) {
+      // iOS'ta Firebase Messaging ile kontrol
+      final fcmSettings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (fcmSettings.authorizationStatus != AuthorizationStatus.authorized) {
+        await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
+        print('🔔 [ŞOFÖR iOS] Bildirim izni istendi');
+      }
     }
     
-    // Pil optimizasyonu bypass
-    try {
-      final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
-      if (batteryStatus.isDenied) {
-        await Permission.ignoreBatteryOptimizations.request();
-        print('🔋 [ŞOFÖR] Pil optimizasyonu bypass istendi');
+    // Pil optimizasyonu bypass (SADECE ANDROID!)
+    if (Platform.isAndroid) {
+      try {
+        final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+        if (batteryStatus.isDenied) {
+          await Permission.ignoreBatteryOptimizations.request();
+          print('🔋 [ŞOFÖR Android] Pil optimizasyonu bypass istendi');
+        }
+      } catch (e) {
+        print('⚠️ [ŞOFÖR Android] Pil izni hatası (normal): $e');
       }
-    } catch (e) {
-      print('⚠️ [ŞOFÖR] Pil izni hatası (normal): $e');
+    } else if (Platform.isIOS) {
+      print('📱 [ŞOFÖR iOS] Arka planda yenileme Info.plist\'te var');
     }
     
     print('✅ [ŞOFÖR] Arka plan izin kontrolü tamamlandı');
