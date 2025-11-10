@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // iOS bildirim kontrolü için!
 import 'dart:io'; // Platform kontrolü için
 
 class PermissionCheckScreen extends StatefulWidget {
@@ -344,18 +345,36 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> with Widg
         print('📱 Android Arka Plan İzni: $backgroundStatus');
         print('   Pil Optimizasyonu İgnore: ${_backgroundAppGranted ? "VAR" : "YOK"}');
       } else if (Platform.isIOS) {
-        // iOS'te arka planda yenileme Info.plist'te zaten var (UIBackgroundModes)
-        // Kullanıcı Settings'te aktif etmesi gerekiyor
-        _backgroundAppGranted = true; // iOS için varsayılan true, Settings'te kontrol et deriz
-        print('📱 iOS Arka Planda Yenileme: Settings → Genel → Arka Planda Yenileme → FunBreak Vale → Aç');
+        // iOS'te arka planda yenileme programatik olarak kontrol edilemez!
+        // Info.plist'te UIBackgroundModes var, kullanıcı açmışsa çalışır
+        // iOS'ta bu izni her zaman TRUE kabul et (ayarlarda açıksa çalışır)
+        _backgroundAppGranted = true;
+        print('📱 iOS Arka Planda Yenileme: Info.plist UIBackgroundModes var (Settings'te açıksa çalışır)');
       }
       
       // 3. Bildirim İzni Kontrol
-      var notificationStatus = await Permission.notification.status;
-      _notificationGranted = notificationStatus.isGranted;
+      if (Platform.isAndroid) {
+        var notificationStatus = await Permission.notification.status;
+        _notificationGranted = notificationStatus.isGranted;
+        print('🔔 Android Bildirim İzni: $notificationStatus');
+      } else if (Platform.isIOS) {
+        // iOS'ta bildirim izni kontrolünü Firebase üzerinden yap (daha güvenilir!)
+        try {
+          final fcmSettings = await FirebaseMessaging.instance.getNotificationSettings();
+          _notificationGranted = (fcmSettings.authorizationStatus == AuthorizationStatus.authorized || 
+                                   fcmSettings.authorizationStatus == AuthorizationStatus.provisional);
+          print('🔔 iOS Bildirim İzni (FCM): ${fcmSettings.authorizationStatus}');
+          print('   İzin durumu: ${_notificationGranted ? "VAR" : "YOK"}');
+        } catch (e) {
+          print('⚠️ iOS bildirim kontrol hatası: $e');
+          _notificationGranted = true; // Hata durumunda varsayılan true
+        }
+      }
       
-      print('🔔 Bildirim İzni Durumu: $notificationStatus');
-      print('   Bildirim İzni: ${_notificationGranted ? "VAR" : "YOK"}');
+      print('📊 TÜM İZİN DURUMU:');
+      print('   📍 Konum: ${_locationAlwaysGranted ? "✅" : "❌"}');
+      print('   📱 Arka Plan: ${_backgroundAppGranted ? "✅" : "❌"}');
+      print('   🔔 Bildirim: ${_notificationGranted ? "✅" : "❌"}');
       
     } catch (e) {
       print('❌ İzin kontrol hatası: $e');
