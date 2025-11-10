@@ -300,8 +300,10 @@ class _RideChatScreenState extends State<RideChatScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _messageController,
+                    style: TextStyle(color: Colors.black, fontSize: 16), // SİYAH YAZI
                     decoration: InputDecoration(
-                      hintText: 'Türkçe karakter test: ş ğ ü ı ö ç',
+                      hintText: 'Mesaj yazın',
+                      hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none,
@@ -684,26 +686,37 @@ class _RideChatScreenState extends State<RideChatScreen> {
         _scrollToBottom();
 
         // 🔥 RESMİ SUNUCUYA UPLOAD ET
+        // Upload sunucuya - SADECE BAŞARILI İSE API GÖNDER!
         String? uploadedImageUrl;
         try {
           uploadedImageUrl = await _uploadImage(image.path, int.parse(widget.rideId));
           if (uploadedImageUrl != null) {
-            print('✅ ŞOFÖR Resim sunucuya yüklendi: $uploadedImageUrl');
-            // Mesajı güncelle - artık URL kullan
+            print('✅ ŞOFÖR Resim upload: $uploadedImageUrl');
             setState(() {
               _messages.last['message'] = uploadedImageUrl;
             });
             await _persistMessages();
+            
+            // API'ye gönder - SADECE BİR KERE!
+            await _sendMessageToAPI(uploadedImageUrl, 'image');
+            print('📸 Fotoğraf gönderildi');
           } else {
-            print('⚠️ ŞOFÖR Resim sunucuya yüklenemedi, local path kullanılacak');
+            print('❌ Upload başarısız - mesaj siliniyor');
+            setState(() {
+              _messages.removeWhere((msg) => msg['id'] == tempId);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('❌ Fotoğraf yüklenemedi'), backgroundColor: Colors.red),
+            );
+            return;
           }
-        } catch (uploadError) {
-          print('❌ ŞOFÖR Upload hatası: $uploadError');
+        } catch (e) {
+          print('❌ Upload hatası: $e');
+          setState(() {
+            _messages.removeWhere((msg) => msg['id'] == tempId);
+          });
+          return;
         }
-
-        // API'ye gönder - upload edilen URL veya local path
-        await _sendMessageToAPI(uploadedImageUrl ?? image.path, 'image');
-        print('📸 ŞOFÖR Fotoğraf API gönderildi');
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -772,13 +785,16 @@ class _RideChatScreenState extends State<RideChatScreen> {
       String? locationName;
       
       if (locationChoice == 'current') {
-        // MEVCUT KONUM
-        final permission = await Permission.location.request();
-        if (permission != PermissionStatus.granted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('❌ Konum izni gerekli!')),
-          );
-          return;
+        // MEVCUT KONUM - İZİN KONTROLÜ
+        var permission = await Permission.location.status;
+        if (!permission.isGranted) {
+          permission = await Permission.location.request();
+          if (!permission.isGranted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('❌ Konum izni gerekli!')),
+            );
+            return;
+          }
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1070,11 +1086,21 @@ class _RideChatScreenState extends State<RideChatScreen> {
     try {
       print('📤 ŞOFÖR Resim sunucuya yükleniyor: $imagePath');
       
-      // Dosyayı oku
+      // XFile path'i File'a çevir
       final File imageFile = File(imagePath);
-      if (!imageFile.existsSync()) {
+      if (!await imageFile.exists()) {
         print('❌ ŞOFÖR Resim dosyası bulunamadı: $imagePath');
-        return null;
+        
+        // iOS'ta XFile path farklı olabilir, tekrar dene
+        try {
+          final bytes = await File(imagePath).readAsBytes();
+          if (bytes.isEmpty) {
+            return null;
+          }
+        } catch (e) {
+          print('❌ Dosya okuma hatası: $e');
+          return null;
+        }
       }
       
       // Base64'e çevir
@@ -1116,12 +1142,16 @@ class _RideChatScreenState extends State<RideChatScreen> {
 
   Future<void> _startRecording() async {
     try {
-      final permission = await Permission.microphone.request();
-      if (permission != PermissionStatus.granted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Mikrofon izni gerekli!')),
-        );
-        return;
+      // MİKROFON İZNİ KONTROLÜ - İZİN VARSA REQUEST ÇAĞIRMA!
+      var permission = await Permission.microphone.status;
+      if (!permission.isGranted) {
+        permission = await Permission.microphone.request();
+        if (!permission.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('❌ Mikrofon izni gerekli!')),
+          );
+          return;
+        }
       }
       
       final directory = await getApplicationDocumentsDirectory();
