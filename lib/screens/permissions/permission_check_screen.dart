@@ -330,6 +330,7 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> {
         // Kullanıcı Settings'te aktif etmesi gerekiyor
         _backgroundAppGranted = true; // iOS için varsayılan true, Settings'te kontrol et deriz
         print('📱 iOS Arka Planda Yenileme: Settings → Genel → Arka Planda Yenileme → FunBreak Vale → Aç');
+      }
       
       // 3. Bildirim İzni Kontrol
       var notificationStatus = await Permission.notification.status;

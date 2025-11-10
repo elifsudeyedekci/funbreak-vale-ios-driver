@@ -86,10 +86,11 @@ Future<void> _driverFirebaseBackgroundHandler(RemoteMessage message) async {
         }
       } catch (e) {
         // Duplicate app hatası normalize - çalışmaya devam et
-      if (e.toString().contains('duplicate-app')) {
-        print('🔥 Firebase already initialized - background handler working!');
-      } else {
-        print('❌ Firebase background init error: $e');
+        if (e.toString().contains('duplicate-app')) {
+          print('🔥 Firebase already initialized - background handler working!');
+        } else {
+          print('❌ Firebase background init error: $e');
+        }
       }
     }
     
