@@ -189,18 +189,18 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_driverFirebaseBackgroundHandler);
   print('BACKGROUND HANDLER MAIN DE KAYDEDILDI!');
   
-  // ⚠️ iOS'te Firebase.configure() AppDelegate tarafından yapılıyor!
-  if (Platform.isAndroid) {
-    try {
+  // ⚠️ Firebase initialization - HER PLATFORMDA Flutter plugin halleder!
+  try {
+    if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      print('✅ Firebase başlatıldı (Android - ŞOFÖR)');
-    } catch (e) {
-      print('⚠️ Firebase init hatası: $e');
+      print('✅ ŞOFÖR Firebase başlatıldı (${Platform.isAndroid ? "Android" : "iOS"})');
+    } else {
+      print('⚠️ ŞOFÖR Firebase zaten başlatılmış');
     }
-  } else {
-    print('📱 iOS ŞOFÖR: Firebase.configure() AppDelegate tarafından yapıldı');
+  } catch (e) {
+    print('⚠️ ŞOFÖR Firebase init hatası (normal, çalışmaya devam): $e');
   }
   
   // GELİŞMİŞ SÜRÜCÜ BİLDİRİM SERVİSİ BAŞLAT!

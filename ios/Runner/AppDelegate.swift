@@ -11,13 +11,9 @@ import GoogleMaps  // ⚠️ Google Maps import!
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // ⚠️ Firebase initialization - SAFE configure (duplicate check!)
-    if FirebaseApp.app() == nil {
-      FirebaseApp.configure()
-      print("✅ Firebase configured in iOS (native - ŞOFÖR)")
-    } else {
-      print("⚠️ Firebase already configured - skipping (ŞOFÖR)")
-    }
+    // ⚠️ Firebase initialization - Flutter kendi halleder (main.dart'ta)!
+    // Firebase.configure() iOS'te CRASH yapıyor - Flutter plugin otomatik initialize eder!
+    print("📱 iOS ŞOFÖR: Firebase initialization Flutter plugin tarafından otomatik yapılacak")
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
