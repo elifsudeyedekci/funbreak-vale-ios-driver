@@ -360,28 +360,51 @@ class AdvancedNotificationService {
     await _updateDriverTokenOnServer(token);
   }
   
-  // LOCAL BİLDİRİM GÖSTER - SÜRÜCÜ STILI!
+  // LOCAL BİLDİRİM GÖSTER - PLATFORM-AWARE!
   static Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     
-    // 🔥 HER ZAMAN BİZİM LOCAL'İ GÖSTER - HEADS-UP GARANTİLİ!
-    if (notification != null) {
-      print('✅ [ŞOFÖR] Local notification gösteriliyor (heads-up garantisi için)');
-      // FCM de gösterebilir ama bizimki daha agresif - heads-up olur!
-      
-      // 🔥 UNIQUE ID - Hash ile garanti unique
-      final timestamp = DateTime.now();
-      final uniqueId = (timestamp.millisecondsSinceEpoch + timestamp.microsecond).hashCode.abs() % 2147483647;
-      
-      // 🔥 HER BİLDİRİM İÇİN FARKLI TİTREŞİM!
-      final vibrationPattern = Int64List.fromList([0, 250 + (uniqueId % 200), 250, 250]);
-      
-      // 🔥 HER BİLDİRİM TİPİ İÇİN AYRI CHANNEL - ANDROID RATE-LIMIT BYPASS!
-      final notificationType = message.data['type'] ?? message.data['notification_type'] ?? '';
-      String channelId;
-      String channelName;
-      String channelDesc;
-      String sound = 'notification';
+    if (notification == null) {
+      print('⚠️ ŞOFÖR Notification null');
+      return;
+    }
+    
+    print('✅ [ŞOFÖR] Local notification gösteriliyor');
+    
+    // iOS - BASIT GÖSTER!
+    if (Platform.isIOS) {
+      try {
+        await _localNotifications.show(
+          DateTime.now().millisecondsSinceEpoch.remainder(100000),
+          notification.title ?? 'FunBreak Vale Sürücü',
+          notification.body ?? '',
+          NotificationDetails(
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+              sound: 'notification.caf',
+            ),
+          ),
+          payload: jsonEncode(message.data),
+        );
+        print('✅ ŞOFÖR iOS notification gösterildi!');
+      } catch (e) {
+        print('❌ ŞOFÖR iOS notification error: $e');
+      }
+      return;
+    }
+    
+    // ANDROID - CHANNEL SİSTEMİ
+    final timestamp = DateTime.now();
+    final uniqueId = (timestamp.millisecondsSinceEpoch + timestamp.microsecond).hashCode.abs() % 2147483647;
+    final vibrationPattern = Int64List.fromList([0, 250 + (uniqueId % 200), 250, 250]);
+    
+    final notificationType = message.data['type'] ?? message.data['notification_type'] ?? '';
+    String channelId;
+    String channelName;
+    String channelDesc;
+    String sound = 'notification';
       
       if (notificationType == 'new_ride_request') {
         channelId = 'rides'; // ✅ Yeni talep
