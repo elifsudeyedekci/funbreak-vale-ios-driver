@@ -766,13 +766,16 @@ class DriverRideProvider extends ChangeNotifier {
             rides = int.tryParse(data['rides'].toString()) ?? 0;
           }
           
-          debugPrint('✅ Kazanç alındı - İNDİRİMLİ BRÜT: ₺$totalRevenue, NET: ₺$netEarnings, Yolculuk: $rides');
+          // ✅ Backend'den direk earnings ve rides kullan
+          final backendEarnings = double.tryParse(data['earnings']?.toString() ?? '0') ?? 0.0;
+          final backendRides = int.tryParse(data['rides']?.toString() ?? '0') ?? 0;
+          
+          debugPrint('✅ Kazanç alındı - Backend Earnings: ₺$backendEarnings, Rides: $backendRides');
+          debugPrint('📊 Full data: $data');
           
           return {
-            'earnings': totalRevenue, // 🔥 ANA SAYFADA İNDİRİMLİ BRÜT!
-            'net_earnings': netEarnings,
-            'gross_earnings': grossEarnings,
-            'rides': rides,
+            'earnings': backendEarnings, // Backend'den gelen NET kazanç
+            'rides': backendRides,
           };
         } else {
           debugPrint('❌ API success=false: ${data['message'] ?? 'Bilinmeyen hata'}');

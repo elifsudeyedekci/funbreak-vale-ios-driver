@@ -2218,23 +2218,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       final driverLat = _driverLocation?.latitude ?? pickupLat;
       final driverLng = _driverLocation?.longitude ?? pickupLng;
 
+      // ✅ KM HESAPLAMA: SADECE BACKEND'DEN AL!
+      // Backend update_location.php Haversine ile her konum değişiminde artış ekliyor
+      // Client-side hesaplama YANLIŞ (pickup'tan uzaklık azalabilir)
       final backendKm = double.tryParse(_currentRideStatus['current_km']?.toString() ?? 
                                         widget.rideDetails['current_km']?.toString() ?? '0') ?? 0.0;
       
       double currentKm = backendKm;
-      
-      if (pickupLat != 0.0 && pickupLng != 0.0 && destLat != 0.0 && destLng != 0.0) {
-        final totalDistance = _calculateDistanceMeters(pickupLat, pickupLng, destLat, destLng) / 1000.0;
-        final travelledDistance = _calculateDistanceMeters(pickupLat, pickupLng, driverLat, driverLng) / 1000.0;
-        final calculatedKm = travelledDistance.clamp(0.0, totalDistance);
-        
-        if (calculatedKm > backendKm) {
-          currentKm = calculatedKm;
-          print('✅ KM ARTIŞI: Backend=$backendKm → Yeni=$currentKm');
-        } else {
-          print('🔒 KM KORUMA: Backend=$backendKm korundu (Hesaplanan=$calculatedKm)');
-        }
-      }
+      print('📏 KM: Backend=$backendKm (update_location.php otomatik hesaplıyor)');
       
         final currentPriceValue = _calculatedTotalPrice > 0
             ? _calculatedTotalPrice
