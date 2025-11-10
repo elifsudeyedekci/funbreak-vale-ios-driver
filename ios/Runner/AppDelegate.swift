@@ -78,4 +78,39 @@ import GoogleMaps  // ⚠️ Google Maps import!
     print("📱 ŞOFÖR FCM Token güncellendi: \(fcmToken?.prefix(20) ?? "nil")...")
     // Token'ı backend'e göndermek için kullanılabilir
   }
+  
+  // ⚠️ FOREGROUND BİLDİRİM HANDLER - iOS'ta bildirim göstermek için ZORUNLU!
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                       willPresent notification: UNNotification,
+                                       withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    let userInfo = notification.request.content.userInfo
+    
+    print("🔔 iOS ŞOFÖR FOREGROUND Bildirim alındı:")
+    print("   📋 Title: \(notification.request.content.title)")
+    print("   💬 Body: \(notification.request.content.body)")
+    print("   📊 UserInfo: \(userInfo)")
+    
+    // iOS 14+ için yeni presentation options
+    if #available(iOS 14.0, *) {
+      completionHandler([[.banner, .list, .badge, .sound]])
+      print("✅ iOS 14+ ŞOFÖR Bildirim gösterilecek: banner + list + sound + badge")
+    } else {
+      // iOS 13 ve altı için eski options
+      completionHandler([[.alert, .badge, .sound]])
+      print("✅ iOS 13 ŞOFÖR Bildirim gösterilecek: alert + sound + badge")
+    }
+  }
+  
+  // ⚠️ BİLDİRİME TIKLANMA HANDLER
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                       didReceive response: UNNotificationResponse,
+                                       withCompletionHandler completionHandler: @escaping () -> Void) {
+    let userInfo = response.notification.request.content.userInfo
+    
+    print("👆 iOS ŞOFÖR Bildirime tıklandı:")
+    print("   📊 UserInfo: \(userInfo)")
+    
+    // Flutter tarafına ilet
+    completionHandler()
+  }
 }
