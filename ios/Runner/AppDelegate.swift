@@ -10,9 +10,9 @@ import GoogleMaps  // ⚠️ Google Maps import!
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    // ⚠️ Firebase initialization
-    FirebaseApp.configure()
-    print("✅ Firebase configured in iOS")
+    // ⚠️ Firebase initialization - main.dart'ta yapılıyor (Flutter tarafında)
+    // FirebaseApp.configure() // ← DUPLICATE! main.dart'ta zaten var
+    print("⚠️ Firebase initialization skipped - main.dart handles it (ŞOFÖR)")
     
     // ⚠️ Google Maps API Key
     GMSServices.provideAPIKey("AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY")
