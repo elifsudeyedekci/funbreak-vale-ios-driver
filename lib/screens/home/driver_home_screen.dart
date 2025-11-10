@@ -1195,13 +1195,24 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
   }
 
   Future<void> _loadTodayStats() async {
-    final driverProvider = Provider.of<DriverRideProvider>(context, listen: false);
-    final stats = await driverProvider.getTodayEarnings();
-    
-    setState(() {
-      _todayEarnings = stats['earnings'];
-      _todayRides = stats['rides'];
-    });
+    try {
+      final driverProvider = Provider.of<DriverRideProvider>(context, listen: false);
+      final stats = await driverProvider.getTodayEarnings();
+      
+      print('📊 GÜNLÜK KAZANÇ API RESPONSE:');
+      print('   Earnings: ${stats['earnings']}');
+      print('   Rides: ${stats['rides']}');
+      
+      if (mounted) {
+        setState(() {
+          _todayEarnings = stats['earnings'] ?? 0.0;
+          _todayRides = stats['rides'] ?? 0;
+        });
+        print('✅ Günlük kazanç kartı güncellendi: ₺${_todayEarnings.toStringAsFixed(2)}');
+      }
+    } catch (e) {
+      print('❌ Günlük kazanç yükleme hatası: $e');
+    }
   }
 
   void _showNotifications() {
