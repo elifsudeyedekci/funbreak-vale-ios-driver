@@ -349,7 +349,7 @@ class _PermissionCheckScreenState extends State<PermissionCheckScreen> with Widg
         // Info.plist'te UIBackgroundModes var, kullanıcı açmışsa çalışır
         // iOS'ta bu izni her zaman TRUE kabul et (ayarlarda açıksa çalışır)
         _backgroundAppGranted = true;
-        print('📱 iOS Arka Planda Yenileme: Info.plist UIBackgroundModes var (Settings'te açıksa çalışır)');
+        print('📱 iOS Arka Planda Yenileme: Info.plist UIBackgroundModes var (Settings açıksa çalışır)');
       }
       
       // 3. Bildirim İzni Kontrol
