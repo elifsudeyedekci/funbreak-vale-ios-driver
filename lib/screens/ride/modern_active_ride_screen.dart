@@ -1843,8 +1843,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           'waiting_started': true, // BEKLEME BAŞLATILDI!
           'waiting_minutes': _waitingMinutes,
           'current_km': 0,
-          'driver_lat': 0,
-          'driver_lng': 0,
+          'driver_lat': _driverLocation?.latitude ?? 0.0, // ✅ GERÇEK KONUM!
+          'driver_lng': _driverLocation?.longitude ?? 0.0, // ✅ GERÇEK KONUM!
         }),
       ).timeout(const Duration(seconds: 10));
       print('⏰ ŞOFÖR: Backend\'e bekleme BAŞLATILDI bildirimi gönderildi');
