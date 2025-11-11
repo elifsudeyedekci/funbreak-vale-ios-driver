@@ -925,25 +925,93 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   }
   
   Widget _buildPriceInfo() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
+    // ✅ İKİ KUTUCUK SİSTEMİ (MÜŞTERİ GİBİ)
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.account_balance_wallet, color: Colors.white70, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            'Tahmini Tutar: ₺${_calculatedTotalPrice.toStringAsFixed(0)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+          // SOL KUTUCUK - TAHMİNİ FİYAT (SABİT)
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade700.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.receipt_long, color: Colors.white70, size: 16),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tahmini Fiyat',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₺${_getInitialEstimatedPrice()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Text(
+                    'Sabit',
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // SAĞ KUTUCUK - GÜNCEL TUTAR (DİNAMİK)
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3), width: 2),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.trending_up, color: Color(0xFFFFD700), size: 16),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Güncel Tutar',
+                    style: TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₺${_calculateDriverCurrentTotal()}',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${_getCurrentKm()} km + ${_waitingMinutes} dk',
+                    style: const TextStyle(
+                      color: Color(0xFFDAA520),
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -4022,5 +4090,40 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       // Normal vale: Bekleme dakikası
       return '$_waitingMinutes dk';
     }
+  }
+
+  // ✅ TAHMİNİ FİYAT (SABİT - İlk hesaplanan)
+  String _getInitialEstimatedPrice() {
+    final initialPrice = double.tryParse(
+      widget.rideDetails['estimated_price']?.toString() ?? '0'
+    ) ?? 0.0;
+    return initialPrice.toStringAsFixed(0);
+  }
+
+  // ✅ GÜNCEL TUTAR (DİNAMİK - Backend estimated_price + Bekleme)
+  String _calculateDriverCurrentTotal() {
+    // Backend'den gelen estimated_price kullan (backend zaten distance_pricing SABİT fiyatı hesaplıyor!)
+    final backendPrice = _currentRideStatus['estimated_price'] ?? 
+                         widget.rideDetails['estimated_price'] ?? 0.0;
+    final basePrice = double.tryParse(backendPrice.toString()) ?? 0.0;
+    
+    // Bekleme ücreti ekle (eğer varsa)
+    final waitingMinutes = _waitingMinutes;
+    double waitingFee = 0.0;
+    
+    if (waitingMinutes > 0) {
+      final freeMinutes = _currentRideStatus['waiting_free_minutes'] ?? 15;
+      final feePerInterval = double.tryParse((_currentRideStatus['waiting_fee_per_interval'] ?? 200).toString()) ?? 200.0;
+      final intervalMinutes = _currentRideStatus['waiting_interval_minutes'] ?? 15;
+      
+      if (waitingMinutes > freeMinutes) {
+        final chargeableMinutes = waitingMinutes - freeMinutes;
+        final intervals = (chargeableMinutes / intervalMinutes).ceil();
+        waitingFee = intervals * feePerInterval;
+      }
+    }
+    
+    final total = basePrice + waitingFee;
+    return total.toStringAsFixed(0);
   }
 }
