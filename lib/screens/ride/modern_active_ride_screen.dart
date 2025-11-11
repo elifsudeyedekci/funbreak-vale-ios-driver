@@ -930,24 +930,25 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          // SOL KUTUCUK - TAHMİNİ FİYAT (SABİT)
+          // SOL KUTUCUK - TAHMİNİ FİYAT (SABİT - MAVİ)
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade700.withOpacity(0.3),
+                color: const Color(0xFF1E3A8A).withOpacity(0.7), // Koyu mavi - daha net
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                border: Border.all(color: Colors.blueAccent.withOpacity(0.5), width: 2),
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.receipt_long, color: Colors.white70, size: 16),
+                  const Icon(Icons.receipt_long, color: Colors.white, size: 16),
                   const SizedBox(height: 4),
                   const Text(
                     'Tahmini Fiyat',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: Colors.white,
                       fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -955,14 +956,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                     '₺${_getInitialEstimatedPrice()}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const Text(
                     'Sabit',
                     style: TextStyle(
-                      color: Colors.white60,
+                      color: Colors.white70,
                       fontSize: 9,
                     ),
                   ),
@@ -973,23 +974,23 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           
           const SizedBox(width: 12),
           
-          // SAĞ KUTUCUK - GÜNCEL TUTAR (DİNAMİK)
+          // SAĞ KUTUCUK - GÜNCEL TUTAR (DİNAMİK - YEŞİL)
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD700).withOpacity(0.2),
+                color: const Color(0xFF059669).withOpacity(0.8), // Yeşil - daha net
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3), width: 2),
+                border: Border.all(color: const Color(0xFF10B981), width: 2),
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.trending_up, color: Color(0xFFFFD700), size: 16),
+                  const Icon(Icons.trending_up, color: Colors.white, size: 16),
                   const SizedBox(height: 4),
                   const Text(
                     'Güncel Tutar',
                     style: TextStyle(
-                      color: Color(0xFFFFD700),
+                      color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -998,15 +999,15 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                   Text(
                     '₺${_calculateDriverCurrentTotal()}',
                     style: const TextStyle(
-                      color: Color(0xFFFFD700),
-                      fontSize: 18,
+                      color: Colors.white,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     '${_getCurrentKm()} km + ${_waitingMinutes} dk',
                     style: const TextStyle(
-                      color: Color(0xFFDAA520),
+                      color: Colors.white70,
                       fontSize: 9,
                     ),
                   ),
