@@ -2607,135 +2607,42 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     // );
   }
   
-  // KÖPRÜ SİSTEMİ - MÜŞTERİYİ ARA (SAĞ ALT "ARA" BUTONU)! ✅
+  // KÖPRÜ SİSTEMİ - PANELDEN DESTEK TELEFONU ÇEK! ✅
   Future<void> _startBridgeCall() async {
-    final customerName = _currentRideStatus['customer_name'] ?? widget.rideDetails['customer_name'] ?? 'Müşteri';
-    
-    // ✅ Müşteri telefonu - tüm kaynaklardan dene!
-    String customerPhone = _currentRideStatus['customer_phone'] ?? widget.rideDetails['customer_phone'] ?? '';
-    
-    // Eğer hala boşsa, backend'den çek!
-    if (customerPhone.isEmpty) {
-      print('⚠️ [ŞOFÖR] Müşteri telefonu boş - backend\'den çekiliyor...');
-      await _loadCustomerDetails();
-      customerPhone = _currentRideStatus['customer_phone'] ?? widget.rideDetails['customer_phone'] ?? '';
-    }
-    
-    // rideId int'e parse et!
-    final rideIdRaw = widget.rideDetails['ride_id'] ?? 0;
-    final rideId = rideIdRaw is int ? rideIdRaw : int.tryParse(rideIdRaw.toString()) ?? 0;
-    
-    print('📋 [ŞOFÖR ALT BUTON] Arama bilgileri: Ride=$rideId, Müşteri telefon=$customerPhone');
-    
-    // ✅ Müşteri telefonu kontrolü!
-    if (customerPhone.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Text('❌ Müşteri telefon numarası bulunamadı'),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+    try {
+      print('📞 [ŞOFÖR] Köprü sistemi başlatılıyor...');
+      
+      // Panel'den destek telefonu çek
+      final supportPhone = await _getSupportPhoneFromPanel();
+      
+      if (supportPhone == null || supportPhone.isEmpty) {
+        throw Exception('Destek telefonu alınamadı');
       }
-      return;
+      
+      print('📞 [ŞOFÖR] Destek telefonu alındı: $supportPhone');
+      
+      // Köprü sistemi parametreleri
+      final rideId = widget.rideDetails['ride_id']?.toString() ?? '0';
+      final customerId = widget.rideDetails['customer_id']?.toString() ?? '0';
+      final customerPhone = widget.rideDetails['customer_phone'] ?? '';
+      
+      // Destek hattını ara (köprü sistemi)
+      await _executePhoneCall(
+        supportPhone,
+        onDial: () => print('Köprü arandı'),
+      );
+      
+    } catch (e) {
+      print('❌ [ŞOFÖR] Köprü sistemi hatası: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Arama hatası: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
-    
-    // Köprü hattı numarası (SABİT!)
-    const bridgeNumber = '0216 606 45 10';
-    
-    print('📞 [ŞOFÖR ALT BUTON] Köprü arama başlatılıyor - Müşteri: $customerName');
-    
-    // Bilgilendirme ve onay dialogu
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.security, color: Colors.green, size: 28),
-            SizedBox(width: 12),
-            Text('🔒 Güvenli Köprü Arama', style: TextStyle(color: Colors.white)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.phone_in_talk, color: Color(0xFFFFD700), size: 60),
-            const SizedBox(height: 16),
-            const Text(
-              'Köprü hattımız sizi müşterinizle güvenli bir şekilde bağlayacaktır.',
-              style: TextStyle(color: Colors.white, fontSize: 15),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    '📞 Köprü Hattı',
-                    style: TextStyle(color: Colors.green, fontSize: 12),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    bridgeNumber,
-                    style: TextStyle(
-                      color: Color(0xFFFFD700),
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '👤 Bağlanacak: $customerName',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '🔐 Gizlilik: İki taraf da sadece köprü numarasını görür',
-              style: TextStyle(color: Colors.green, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Vazgeç', style: TextStyle(color: Colors.white70)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _initiateBridgeCallToCustomer(rideId, customerPhone, customerName);
-            },
-            icon: const Icon(Icons.phone, color: Colors.white),
-            label: const Text('Aramayı Başlat', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ],
-      ),
-    );
   }
   
   // PANEL'DEN DESTEK TELEFONU ÇEK
