@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/ride.dart';
 import 'admin_api_provider.dart';
 import '../services/location_service.dart';
+import '../services/location_tracking_service.dart'; // ✅ KM TRACKING İÇİN!
 
 class DriverRideProvider extends ChangeNotifier {
   final AdminApiProvider _adminApi = AdminApiProvider();
@@ -118,7 +119,7 @@ class DriverRideProvider extends ChangeNotifier {
     return queue;
   }
 
-  // Driver online/offline durumu - KONUM BİLGİSİ EKLE!
+  // Driver online/offline durumu - KONUM BİLGİSİ + LOCATION TRACKING!
   Future<void> toggleOnlineStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -134,6 +135,15 @@ class DriverRideProvider extends ChangeNotifier {
       await prefs.setBool('driver_is_online', _isOnline);
 
       debugPrint('🔄 TOGGLE: Sürücü durumu değiştiriliyor - ${_isOnline ? "ÇEVRİMİÇİ" : "ÇEVRİMDIŞI"}');
+
+      // ✅ KRİTİK: ÇEVRİMİÇİ → LocationTracking BAŞLAT, ÇEVRİMDIŞI → DURDUR!
+      if (_isOnline) {
+        await LocationTrackingService.startLocationTracking();
+        debugPrint('✅ TOGGLE: LocationTracking BAŞLATILDI - Arka plan KM tracking aktif!');
+      } else {
+        await LocationTrackingService.stopLocationTracking();
+        debugPrint('⏹️ TOGGLE: LocationTracking DURDURULDU');
+      }
 
       // KONUM BİLGİSİNİ AL VE GÖNDER!
       double? latitude;

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io'; // ✅ Platform kontrolü için
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,23 +37,66 @@ class LocationTrackingService {
       
       print('Konum takibi başlatılıyor - Şoför ID: $driverId');
       
-      // Konum stream'ini başlat
-      const LocationSettings locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // 10 metre hareket ettiğinde güncelle
-      );
+      // Konum stream'ini başlat - PLATFORM SPECIFIC ARKA PLAN DESTEKLİ!
+      late LocationSettings locationSettings;
+      
+      if (Platform.isAndroid) {
+        // ✅ ANDROID - Foreground Service ile arka plan
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5, // 5 metre hareket = daha hassas
+          forceLocationManager: false,
+          intervalDuration: Duration(seconds: 3), // ✅ Her 3 saniye
+          foregroundNotificationConfig: ForegroundNotificationConfig(
+            notificationText: "Yolculuk takibi devam ediyor",
+            notificationTitle: "FunBreak Vale - Konum Aktif",
+            enableWakeLock: true, // ✅ Ekran kapansa da çalışsın
+            notificationChannelName: 'Location Tracking',
+          ),
+        );
+      } else if (Platform.isIOS) {
+        // ✅ iOS - Background Location Updates
+        locationSettings = AppleSettings(
+          accuracy: LocationAccuracy.high,
+          activityType: ActivityType.automotiveNavigation, // Araç navigasyon
+          distanceFilter: 5,
+          pauseLocationUpdatesAutomatically: false, // ✅ Otomatik DURAKLATMA YOK!
+          showBackgroundLocationIndicator: true, // iOS arka plan çubuğu
+          allowBackgroundLocationUpdates: true, // ✅ ARKA PLAN KRİTİK!
+        );
+      } else {
+        // Fallback - Generic settings
+        locationSettings = LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5,
+          timeLimit: Duration(minutes: 30),
+        );
+      }
       
       _positionStream = Geolocator.getPositionStream(
         locationSettings: locationSettings,
       ).listen((Position position) {
         _lastKnownPosition = position;
         _sendLocationToServer(driverId, position);
+        print('📍 STREAM KONUM: ${position.latitude}, ${position.longitude}, Accuracy: ${position.accuracy}m');
       });
       
-      // Periyodik güncelleme timer'ı (30 saniyede bir)
-      _locationTimer = Timer.periodic(Duration(seconds: 30), (timer) async {
+      // ✅ Periyodik güncelleme timer'ı (3 saniyede bir - DAHA HIZLI!)
+      _locationTimer = Timer.periodic(Duration(seconds: 3), (timer) async {
         if (_lastKnownPosition != null) {
           await _sendLocationToServer(driverId, _lastKnownPosition!);
+        } else {
+          // Stream'den gelmemişse manuel çek
+          try {
+            Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 5),
+            );
+            _lastKnownPosition = position;
+            await _sendLocationToServer(driverId, position);
+          } catch (e) {
+            print('⚠️ Manuel konum çekme hatası: $e');
+          }
         }
       });
       

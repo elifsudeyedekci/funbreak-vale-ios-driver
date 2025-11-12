@@ -325,19 +325,19 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         if (data['success'] == true && data['pricing'] != null) {
           final pricing = data['pricing'];
           
-          // Panel'den gelen fiyatlar + BEKLEME AYARLARI CLASS DEĞİŞKENLERİNE!
+          // Panel'den gelen fiyatlar + BEKLEME AYARLARI
           final basePrice = double.tryParse(pricing['base_price']?.toString() ?? '0') ?? 50.0;
           final kmPrice = double.tryParse(pricing['km_price']?.toString() ?? '0') ?? 8.0;
           
-          // BEKLEME AYARLARINI CLASS DEĞİŞKENLERİNE KAYDEDİN!
-          _waitingFreeMinutes = int.tryParse(pricing['waiting_fee_free_minutes']?.toString() ?? '15') ?? 15;
-          _waitingFeePerInterval = double.tryParse(pricing['waiting_fee_per_interval']?.toString() ?? '200') ?? 200.0;
-          _waitingIntervalMinutes = int.tryParse(pricing['waiting_interval_minutes']?.toString() ?? '15') ?? 15;
+          // ✅ BEKLEME AYARLARINI LOCAL DEĞİŞKENE AL (setState içinde güncellenecek!)
+          final waitingFreeMinutes = int.tryParse(pricing['waiting_fee_free_minutes']?.toString() ?? '15') ?? 15;
+          final waitingFeePerInterval = double.tryParse(pricing['waiting_fee_per_interval']?.toString() ?? '200') ?? 200.0;
+          final waitingIntervalMinutes = int.tryParse(pricing['waiting_interval_minutes']?.toString() ?? '15') ?? 15;
           
           final commissionRateRaw = double.tryParse(pricing['commission_rate']?.toString() ?? '0') ?? 0.0;
           final commissionRate = commissionRateRaw >= 1 ? commissionRateRaw / 100.0 : commissionRateRaw;
           
-          print('✅ ŞOFÖR PANEL AYARLAR: İlk $_waitingFreeMinutes dk ücretsiz, her $_waitingIntervalMinutes dk ₺$_waitingFeePerInterval, Komisyon: %${(commissionRate * 100).toInt()}');
+          print('✅ ŞOFÖR PANEL AYARLAR: İlk $waitingFreeMinutes dk ücretsiz, her $waitingIntervalMinutes dk ₺$waitingFeePerInterval, Komisyon: %${(commissionRate * 100).toInt()}');
         final minimumFare = double.tryParse(pricing['minimum_fare']?.toString() ?? '0') ?? 0.0;
         final overnightThresholdHours = double.tryParse(pricing['overnight_package_threshold']?.toString() ?? '0') ?? 0.0;
         final hourlyPackagePrice = double.tryParse(pricing['hourly_package_price']?.toString() ?? '0') ?? 0.0;
@@ -386,14 +386,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           }
         }
 
-        // Bekleme ücreti hesaplama - SAATLİK PAKETTE İPTAL!
+        // Bekleme ücreti hesaplama - SAATLİK PAKETTE İPTAL! (PANEL'DEN GELEN AYARLARLA!)
         double waitingFeeGross = 0.0;
-        if (!isHourlyMode && _isRideStarted && _waitingMinutes > _waitingFreeMinutes) {
-          final chargeableMinutes = _waitingMinutes - _waitingFreeMinutes;
-          final intervals = (chargeableMinutes / _waitingIntervalMinutes).ceil();
-          waitingFeeGross = intervals * _waitingFeePerInterval;
+        if (!isHourlyMode && _isRideStarted && _waitingMinutes > waitingFreeMinutes) {
+          final chargeableMinutes = _waitingMinutes - waitingFreeMinutes;
+          final intervals = (chargeableMinutes / waitingIntervalMinutes).ceil();
+          waitingFeeGross = intervals * waitingFeePerInterval;
           totalPrice += waitingFeeGross;
-          print('💰 ŞOFÖR: Bekleme ücreti eklendi: $_waitingMinutes dk (ücretsiz: $_waitingFreeMinutes dk) → $intervals aralık × ₺$_waitingFeePerInterval = +₺${waitingFeeGross.toStringAsFixed(2)}');
+          print('💰 ŞOFÖR: Bekleme ücreti eklendi: $_waitingMinutes dk (ücretsiz: $waitingFreeMinutes dk) → $intervals aralık × ₺$waitingFeePerInterval = +₺${waitingFeeGross.toStringAsFixed(2)}');
         } else if (isHourlyMode) {
           print('✅ [ŞOFÖR] SAATLİK PAKET - Bekleme ücreti 0!');
         }
@@ -454,6 +454,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         final baseDriverNet = math.max(0.0, totalDriverNet - waitingFeeNet);
 
         setState(() {
+          // ✅ PANEL AYARLARINI CLASS DEĞİŞKENLERİNE GÜNCELLE!
+          _waitingFreeMinutes = waitingFreeMinutes;
+          _waitingFeePerInterval = waitingFeePerInterval;
+          _waitingIntervalMinutes = waitingIntervalMinutes;
+          
           _waitingFee = waitingFeeNet; // Komisyonlu (şoför kazancı için)
           _waitingFeeGross = waitingFeeGross; // KOMİSYONSUZ (müşteriye göstermek için)!
           _estimatedEarnings = baseDriverNet;
