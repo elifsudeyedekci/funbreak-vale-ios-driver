@@ -2659,11 +2659,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         }
       }
       
-      // Fallback numara
-      return '+90 850 460 78 46';
+      // Fallback numara - KÖPRÜ NUMARASI
+      return '0216 606 45 10';
     } catch (e) {
       print('❌ [ŞOFÖR] Destek telefonu alma hatası: $e');
-      return '+90 850 460 78 46'; // Fallback
+      return '0216 606 45 10'; // Köprü numarası fallback
     }
   }
   
@@ -3274,7 +3274,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                 child: InkWell(
                   onTap: () {
                     Navigator.pop(context);
-                    _makeDriverCall('+90 555 123 45 67', '🏢 FunBreak Vale Merkezi');
+                    _makeDriverCall('+90 533 448 82 53'🏢 FunBreak Vale Merkezi');
                   },
                   borderRadius: BorderRadius.circular(15),
                   child: Container(
@@ -3300,7 +3300,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                                 style: TextStyle(color: Colors.white70, fontSize: 13),
                               ),
                               Text(
-                                '+90 555 123 45 67',
+                                '+90 533 448 82 53',
                                 style: TextStyle(color: Colors.white60, fontSize: 12),
                               ),
                             ],
@@ -3321,7 +3321,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                 child: InkWell(
                   onTap: () {
                     Navigator.pop(context);
-                    _makeDriverCall('+90 555 123 45 67', '🚨 Acil Durum');
+                    _makeDriverCall('+90 533 448 82 53', '🚨 Acil Durum');
                   },
                   borderRadius: BorderRadius.circular(15),
                   child: Container(
@@ -3347,7 +3347,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                                 style: TextStyle(color: Colors.white70, fontSize: 13),
                               ),
                               Text(
-                                '+90 555 123 45 67',
+                                '+90 533 448 82 53',
                                 style: TextStyle(color: Colors.white60, fontSize: 12),
                               ),
                             ],
