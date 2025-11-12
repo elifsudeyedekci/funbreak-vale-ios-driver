@@ -2328,13 +2328,18 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
 
         print('📤 ŞOFÖR: Real-time data gönderiliyor - Ride: $rideId, Bekleme: $_waitingMinutes dk (Active: $_isWaitingActive), KM: ${currentKm.toStringAsFixed(1)} (Backend: $backendKm)');
         
+        // ✅ SAATLİK PAKET KONTROLÜ
+        final serviceType = widget.rideDetails['service_type']?.toString().toLowerCase() ?? 
+                           _currentRideStatus['service_type']?.toString().toLowerCase() ?? '';
+        final isHourly = serviceType == 'hourly';
+        
         final response = await http.post(
         Uri.parse('https://admin.funbreakvale.com/api/update_ride_realtime_data.php'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'ride_id': int.tryParse(rideId) ?? 0,
-          'current_km': _isHourlyPackage() ? 0 : currentKm.toStringAsFixed(1), // SAATLİK PAKETTE KM=0
-          'waiting_minutes': _isHourlyPackage() ? 0 : _waitingMinutes, // SAATLİK PAKETTE BEKLEME=0
+          'current_km': isHourly ? '0.0' : currentKm.toStringAsFixed(1), // SAATLİK PAKETTE KM=0
+          'waiting_minutes': isHourly ? 0 : _waitingMinutes, // SAATLİK PAKETTE BEKLEME=0
           // waiting_started SİLİNDİ! Her 5sn gönderince backend sıfırlıyor!
           // Sadece BAŞLAT/DURDUR butonlarında gönderilecek!
           'driver_lat': _driverLocation?.latitude ?? 0.0,
