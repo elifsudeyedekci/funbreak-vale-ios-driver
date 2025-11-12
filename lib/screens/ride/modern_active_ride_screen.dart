@@ -3279,7 +3279,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                 child: InkWell(
                   onTap: () {
                     Navigator.pop(context);
-                    _makeDriverCall('+90 533 448 82 53'🏢 FunBreak Vale Merkezi');
+                    _makeDriverCall('+90 533 448 82 53', 'FunBreak Vale Merkezi');
                   },
                   borderRadius: BorderRadius.circular(15),
                   child: Container(
