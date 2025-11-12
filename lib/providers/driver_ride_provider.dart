@@ -783,15 +783,15 @@ class DriverRideProvider extends ChangeNotifier {
             rides = int.tryParse(data['rides'].toString()) ?? 0;
           }
           
-          // ✅ Backend'den direk earnings ve rides kullan
-          final backendEarnings = double.tryParse(data['earnings']?.toString() ?? '0') ?? 0.0;
+          // ✅ Backend'den BRÜT kazanç kullan (komisyon kesilmeden önce!)
+          final backendEarnings = double.tryParse(data['gross_earnings']?.toString() ?? data['earnings']?.toString() ?? '0') ?? 0.0;
           final backendRides = int.tryParse(data['rides']?.toString() ?? '0') ?? 0;
           
-          debugPrint('✅ Kazanç alındı - Backend Earnings: ₺$backendEarnings, Rides: $backendRides');
+          debugPrint('✅ Kazanç alındı - Backend BRÜT Earnings: ₺$backendEarnings, Rides: $backendRides');
           debugPrint('📊 Full data: $data');
           
           return {
-            'earnings': backendEarnings, // Backend'den gelen NET kazanç
+            'earnings': backendEarnings, // Backend'den gelen BRÜT kazanç (komisyon öncesi!)
             'rides': backendRides,
           };
         } else {
