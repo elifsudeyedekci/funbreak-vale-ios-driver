@@ -387,14 +387,18 @@ class _RideMessagingScreenState extends State<RideMessagingScreen> {
                 ),
                 child: TextFormField(
                   controller: _messageController,
+                  style: const TextStyle(color: Colors.black),
                   decoration: const InputDecoration(
-                    hintText: 'ŞOFÖR TEST: ş ğ ü ı ö ç yazın...',
+                    hintText: 'Mesajınızı yazın...',
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
                     ),
                   ),
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.send,
+                  onFieldSubmitted: (_) => _sendMessage(),
                 ),
               ),
             ),
