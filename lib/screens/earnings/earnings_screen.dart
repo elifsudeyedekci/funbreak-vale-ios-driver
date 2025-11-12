@@ -559,7 +559,7 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                       '₺${totalPrice.toStringAsFixed(2)}',
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
-                  ),
+                  ],
                 ),
                 // KOMİSYON
                 Row(
