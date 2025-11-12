@@ -730,11 +730,11 @@ class DriverRideProvider extends ChangeNotifier {
         final serverData = jsonDecode(serverTimeResponse.body);
         // ✅ FIX: server_time string veya object olabilir!
         if (serverData['server_time'] is Map) {
-          today = (serverData['server_time']['iso'] ?? serverData['server_time']['date'] ?? '').toString().split('T')[0];
+          today = (serverData['server_time']['iso'] ?? serverData['server_time']['date'] ?? '').toString().split('T')[0].split(' ')[0];
         } else {
-          today = serverData['server_time'].toString().split('T')[0];
+          today = serverData['server_time'].toString().split('T')[0].split(' ')[0];
         }
-        debugPrint('📅 Server tarihi kullanılıyor: $today');
+        debugPrint('📅 Server tarihi kullanılıyor (SADECE TARİH): $today');
       } else {
         today = DateTime.now().toIso8601String().split('T')[0];
         debugPrint('⚠️ Server tarihine ulaşılamadı, lokal tarih: $today');
