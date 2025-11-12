@@ -2607,42 +2607,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     // );
   }
   
-  // KÖPRÜ SİSTEMİ - PANELDEN DESTEK TELEFONU ÇEK! ✅
+  // KÖPRÜ SİSTEMİ - MÜŞTERİYİ ARA (NetGSM Köprü + Backend API)! ✅
   Future<void> _startBridgeCall() async {
-    try {
-      print('📞 [ŞOFÖR] Köprü sistemi başlatılıyor...');
-      
-      // Panel'den destek telefonu çek
-      final supportPhone = await _getSupportPhoneFromPanel();
-      
-      if (supportPhone == null || supportPhone.isEmpty) {
-        throw Exception('Destek telefonu alınamadı');
-      }
-      
-      print('📞 [ŞOFÖR] Destek telefonu alındı: $supportPhone');
-      
-      // Köprü sistemi parametreleri
-      final rideId = widget.rideDetails['ride_id']?.toString() ?? '0';
-      final customerId = widget.rideDetails['customer_id']?.toString() ?? '0';
-      final customerPhone = widget.rideDetails['customer_phone'] ?? '';
-      
-      // Destek hattını ara (köprü sistemi)
-      await _executePhoneCall(
-        supportPhone,
-        onDial: () => print('Köprü arandı'),
-      );
-      
-    } catch (e) {
-      print('❌ [ŞOFÖR] Köprü sistemi hatası: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Arama hatası: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
+    // ✅ YUKARIDAKİ _callCustomerDirectly() SİSTEMİNİ KULLAN!
+    // Dialog + Backend bridge_call.php + NetGSM köprü bağlama
+    await _callCustomerDirectly();
   }
   
   // PANEL'DEN DESTEK TELEFONU ÇEK
