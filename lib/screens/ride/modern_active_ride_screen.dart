@@ -316,7 +316,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     try {
       // Panel'den fiyat bilgilerini çek
       final response = await http.get(
-        Uri.parse('https://admin.funbreakvale.com/api/get_pricing_info.php'),
+        Uri.parse('https://admin.funbreakvale.com/api/get_pricing_info.php?ts=${DateTime.now().millisecondsSinceEpoch}'),
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
@@ -492,9 +492,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         ) ??
         0.0;
     const kmPriceFallback = 8.0;
-    const waitingFreeMinutesFallback = 30;
-    const waitingIntervalMinutesFallback = 15;
-    const waitingFeePerIntervalFallback = 150.0;
+    // ✅ FALLBACK'TE CLASS DEĞİŞKENLERİNİ KULLAN (panel'den gelen değerler!)
+    final waitingFreeMinutesFallback = _waitingFreeMinutes; // Class değişken
+    final waitingIntervalMinutesFallback = _waitingIntervalMinutes; // Class değişken
+    final waitingFeePerIntervalFallback = _waitingFeePerInterval; // Class değişken
     const commissionRateFallback = 0.30;
     const driverRateFallback = 1 - commissionRateFallback;
     const overnightThresholdFallback = 2.0;
@@ -1145,8 +1146,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     final status = _currentRideStatus['status'] ?? widget.rideDetails['status'] ?? 'accepted';
     final statusInfo = _getDriverStatusInfo(status);
     
-    // 'accepted' durumunda kartı gizle
-    if (status == 'accepted') {
+    // ✅ 'accepted', 'in_progress', 'ride_started' durumlarında kartı gizle
+    if (status == 'accepted' || status == 'in_progress' || status == 'ride_started') {
       return const SizedBox.shrink();
     }
     
@@ -1682,8 +1683,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       case 'ride_started':
       case 'in_progress':
         return {
-          'title': '🚗 Yolculuk Devam Ediyor',
-          'subtitle': 'İyi yolculuklar',
+          'title': '', // ✅ KUTU GİZLENSİN
+          'subtitle': '', // ✅ KUTU GİZLENSİN
           'icon': Icons.directions_car,
           'colors': [const Color(0xFF2196F3), const Color(0xFF64B5F6)],
         };

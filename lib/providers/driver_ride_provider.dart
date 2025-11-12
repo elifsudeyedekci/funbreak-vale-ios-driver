@@ -666,7 +666,9 @@ class DriverRideProvider extends ChangeNotifier {
   Future<void> updateDriverLocation(double lat, double lng) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final driverId = prefs.getString('admin_user_id');
+      final driverId = prefs.getString('admin_user_id') ??
+          prefs.getString('driver_id') ??
+          prefs.getString('user_id');
       
       if (driverId == null || !_isOnline) return;
 

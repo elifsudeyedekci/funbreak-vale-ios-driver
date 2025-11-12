@@ -58,6 +58,11 @@ class RideService {
         'customer_phone': data['customer_phone'] ?? '',
         'distance': data['distance'] ?? '',
         'status': data['status'] ?? '',
+        'pickup_lat': data['pickup_lat'] != null ? double.tryParse(data['pickup_lat']?.toString() ?? '0') : null,
+        'pickup_lng': data['pickup_lng'] != null ? double.tryParse(data['pickup_lng']?.toString() ?? '0') : null,
+        'destination_lat': data['destination_lat'] != null ? double.tryParse(data['destination_lat']?.toString() ?? '0') : null,
+        'destination_lng': data['destination_lng'] != null ? double.tryParse(data['destination_lng']?.toString() ?? '0') : null,
+        'scheduled_time': data['scheduled_time'] ?? null,
       };
       
       print('🚗 SÜRÜCÜ: İşlenmiş talep verisi: $rideData');

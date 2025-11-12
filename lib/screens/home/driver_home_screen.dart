@@ -272,6 +272,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
     final destinationAddress = rideData['destination_address'] ?? '';
     final estimatedPrice = rideData['estimated_price']?.toString() ?? '0';
     final scheduledTime = rideData['scheduled_time'] ?? '';
+    final scheduledLabel = _getScheduledTimeDisplay(rideData);
+    final scheduledSubtext = _getScheduledTimeSubtext(rideData);
+    final pickupDistanceRaw = _calculateDistanceToCustomer(rideData);
+    final pickupDistanceText = (pickupDistanceRaw.contains('km') || pickupDistanceRaw.contains('m'))
+        ? pickupDistanceRaw
+        : '$pickupDistanceRaw km';
     
     showDialog(
       context: context,
@@ -316,6 +322,30 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       const Icon(Icons.person, color: Colors.blue, size: 24),
                       const SizedBox(width: 8),
                       Text(customerName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPopupInfoTile(
+                          Icons.schedule,
+                          'Talep Zamanı',
+                          scheduledLabel,
+                          scheduledSubtext,
+                          iconColor: Colors.deepPurple,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildPopupInfoTile(
+                          Icons.social_distance,
+                          'Pickup Mesafesi',
+                          pickupDistanceText,
+                          'Mevcut konumunuza göre',
+                          iconColor: Colors.teal,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -1024,6 +1054,46 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
       return '?';
     }
   }
+
+  Widget _buildPopupInfoTile(IconData icon, String title, String value, String subtitle, {Color iconColor = const Color(0xFF2563EB)}) {
+    final backgroundColor = iconColor.withOpacity(0.12);
+    final borderColor = iconColor.withOpacity(0.2);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
   
   // GERÇEK MESAFE HESAPLAMA (ESKİ FONKSIYON KORUNDU)!
   String _calculateRealDistance(Map<String, dynamic> rideData) {
@@ -1441,7 +1511,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                                   MaterialPageRoute(
                                     builder: (context) => const EarningsScreen(),
                                   ),
-                                );
+                                ).then((_) => _loadTodayStats());
                               },
                               borderRadius: BorderRadius.circular(20),
                             child: Container(

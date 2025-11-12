@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math' as math;
 import '../../providers/driver_ride_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/ride.dart';
@@ -29,6 +30,27 @@ class _ServicesScreenState extends State<ServicesScreen> {
   void initState() {
     super.initState();
     _loadEarningsData();
+  }
+
+  Widget _buildInfoChip(String text, {Color color = const Color(0xFFFFD700), Color? textColor}) {
+    final effectiveTextColor =
+        textColor ?? (color.computeLuminance() > 0.5 ? Colors.black87 : Colors.white);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: effectiveTextColor,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadEarningsData() async {
@@ -556,6 +578,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
     final estimatedPrice = double.tryParse(ride['estimated_price']?.toString() ?? '0') ?? 0.0;
     final finalPrice = double.tryParse(ride['final_price']?.toString() ?? '0') ?? 0.0;
     final actualPrice = finalPrice > 0 ? finalPrice : estimatedPrice;
+    final initialPrice = double.tryParse(ride['initial_estimated_price']?.toString() ?? '0') ?? estimatedPrice;
+    final waitingMinutes = int.tryParse(ride['waiting_minutes']?.toString() ?? '0') ?? 0;
     
     // 🎁 İndirim bilgisi
     final discountCode = ride['discount_code']?.toString() ?? '';
@@ -569,11 +593,21 @@ class _ServicesScreenState extends State<ServicesScreen> {
     }
     
     // Backend'den gelen net_earning'i kullan! (komisyon settings'den dinamik)
+    final commissionRate = double.tryParse(ride['commission_rate']?.toString() ?? '30') ?? 30.0;
+    final commissionAmount = ride['commission_amount'] != null
+        ? (double.tryParse(ride['commission_amount'].toString()) ?? 0.0)
+        : actualPrice * (commissionRate / 100);
+    final waitingFeeAmount = ride['waiting_fee_amount'] != null
+        ? (double.tryParse(ride['waiting_fee_amount'].toString()) ?? 0.0)
+        : math.max(0.0, actualPrice - initialPrice + discountAmount);
     final netEarnings = ride['net_earning'] != null 
-        ? (double.tryParse(ride['net_earning'].toString()) ?? (actualPrice * 0.70))
-        : (actualPrice * 0.70); // Fallback: %30 komisyon
-    
+        ? (double.tryParse(ride['net_earning'].toString()) ?? (actualPrice - commissionAmount))
+        : (actualPrice - commissionAmount);
+    final status = (ride['status'] ?? '').toString().toLowerCase();
     final distance = double.tryParse(ride['total_distance']?.toString() ?? '0') ?? 0.0;
+    final distanceLabel = distance > 0
+        ? '${distance.toStringAsFixed(1)} km'
+        : (status == 'cancelled' ? 'İptal edildi' : 'Mesafe bilinmiyor');
     
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -614,33 +648,42 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (hasDiscount) ...[
-                        Text(
-                          'Toplam: ₺${originalPrice.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[500],
-                            decoration: TextDecoration.lineThrough,
-                          ),
+                      Text(
+                        'Brüt: ₺${actualPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
                         ),
+                      ),
+                      if (hasDiscount)
                         Text(
                           'İndirim: -₺${discountAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: Colors.orange,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                      if (waitingFeeAmount > 0)
                         Text(
-                          'Kom.%30: -₺${(actualPrice * 0.30).toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[600],
+                          'Bekleme: +₺${waitingFeeAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.teal,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
                       Text(
-                        '₺${netEarnings.toStringAsFixed(2)}',
+                        'Kom. (-%${commissionRate.toStringAsFixed(1)}): -₺${commissionAmount.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Net: ₺${netEarnings.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -660,6 +703,49 @@ class _ServicesScreenState extends State<ServicesScreen> {
               ),
               
               const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildInfoChip('Taban: ₺${initialPrice.toStringAsFixed(2)}'),
+                  if (waitingMinutes > 0)
+                    _buildInfoChip('Bekleme ${waitingMinutes}dk • ₺${waitingFeeAmount.toStringAsFixed(2)}', color: Colors.teal),
+                  if (hasDiscount)
+                    _buildInfoChip('İndirim $discountCode • -₺${discountAmount.toStringAsFixed(2)}', color: Colors.orange),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              
+              if (status == 'cancelled')
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.red, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '45 dakika veya daha öncesinde rezervasyon iptallerinde 1500₺ iptal ücreti yansımaktadır.',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               
               // Rota Bilgileri
               Row(
@@ -727,7 +813,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '📏 ${distance > 0 ? '${distance.toStringAsFixed(1)} km' : 'Mesafe bilinmiyor'}',
+                    '📏 $distanceLabel',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],
@@ -757,6 +843,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
   
   void _showRideDetailModal(Map<String, dynamic> ride) {
+    final status = (ride['status'] ?? '').toString().toLowerCase();
+    final distanceValue = double.tryParse(ride['total_distance']?.toString() ?? '0') ?? 0.0;
+    final distanceLabel = distanceValue > 0
+        ? '${distanceValue.toStringAsFixed(1)} km'
+        : (status == 'cancelled' ? 'İptal edildi' : 'Bilinmiyor');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -798,28 +889,37 @@ class _ServicesScreenState extends State<ServicesScreen> {
               // Navigasyon geçmişi ve kazanç detayları burada gösterilecek
               _buildDetailSection('🗺️ Navigasyon Bilgileri', [
                 'Rota: ${ride['pickup_address']} → ${ride['destination_address']}',
-                'Mesafe: ${ride['total_distance'] ?? 'Bilinmiyor'} km',
+                'Mesafe: $distanceLabel',
                 'Süre: ${ride['trip_duration'] ?? 'Bilinmiyor'}',
               ]),
               
               _buildDetailSection('₺ Kazanç Detayları', () {
                 final estimatedPrice = double.tryParse(ride['estimated_price']?.toString() ?? '0') ?? 0.0;
                 final finalPrice = double.tryParse(ride['final_price']?.toString() ?? '0') ?? 0.0;
+                final initialPrice = double.tryParse(ride['initial_estimated_price']?.toString() ?? '0') ?? estimatedPrice;
                 final discountCode = ride['discount_code']?.toString() ?? '';
                 final discountAmount = double.tryParse(ride['discount_amount']?.toString() ?? '0') ?? 0.0;
                 final hasDiscount = discountCode.isNotEmpty && discountAmount > 0;
-                final commission = finalPrice * 0.30;
-                final netEarning = finalPrice * 0.70;
+                final commissionRate = double.tryParse(ride['commission_rate']?.toString() ?? '30') ?? 30.0;
+                final commission = double.tryParse(ride['commission_amount']?.toString() ?? '0') ?? (finalPrice * (commissionRate / 100));
+                final waitingFeeAmount = double.tryParse(ride['waiting_fee_amount']?.toString() ?? '0') 
+                    ?? math.max(0.0, finalPrice - initialPrice + discountAmount);
+                final netEarning = double.tryParse(ride['net_earning']?.toString() ?? '0') ?? (finalPrice - commission);
                 
                 List<String> items = [
-                  'Brüt Ücret: ₺${estimatedPrice.toStringAsFixed(2)}',
+                  'Brüt Ücret: ₺${finalPrice.toStringAsFixed(2)}',
+                  'Taban (Bekleme hariç): ₺${initialPrice.toStringAsFixed(2)}',
                 ];
                 
                 if (hasDiscount) {
                   items.add('🎁 İndirim ($discountCode): -₺${discountAmount.toStringAsFixed(2)}');
                 }
                 
-                items.add('Komisyon (-30%): -₺${commission.toStringAsFixed(2)}');
+                if (waitingFeeAmount > 0) {
+                  items.add('⏳ Bekleme Ücreti: +₺${waitingFeeAmount.toStringAsFixed(2)} (${ride['waiting_minutes']} dk)');
+                }
+                
+                items.add('Komisyon (-%${commissionRate.toStringAsFixed(1)}): -₺${commission.toStringAsFixed(2)}');
                 items.add('Net Kazanç: ₺${netEarning.toStringAsFixed(2)}');
                 
                 return items;
@@ -829,6 +929,34 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 'Müşteri: ${ride['customer_name'] ?? 'Belirtilmemiş'}',
                 'Değerlendirme: ${ride['rating'] != null ? '⭐ ${ride['rating']}' : 'Değerlendirilmemiş'}',
               ]),
+
+              if (status == 'cancelled')
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.red, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '45 dakika veya daha öncesinde rezervasyon iptallerinde 1500₺ iptal ücreti yansımaktadır.',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
