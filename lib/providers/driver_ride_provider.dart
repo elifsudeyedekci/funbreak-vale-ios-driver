@@ -728,7 +728,12 @@ class DriverRideProvider extends ChangeNotifier {
       String today;
       if (serverTimeResponse.statusCode == 200) {
         final serverData = jsonDecode(serverTimeResponse.body);
-        today = serverData['server_time']['iso'].toString().split('T')[0];
+        // ✅ FIX: server_time string veya object olabilir!
+        if (serverData['server_time'] is Map) {
+          today = (serverData['server_time']['iso'] ?? serverData['server_time']['date'] ?? '').toString().split('T')[0];
+        } else {
+          today = serverData['server_time'].toString().split('T')[0];
+        }
         debugPrint('📅 Server tarihi kullanılıyor: $today');
       } else {
         today = DateTime.now().toIso8601String().split('T')[0];

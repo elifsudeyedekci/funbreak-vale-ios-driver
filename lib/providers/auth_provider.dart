@@ -109,8 +109,8 @@ class AuthProvider with ChangeNotifier {
             // Konum takibini başlat
             _locationService.startLocationTracking();
             
-            // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET!
-            _updateFCMToken();
+            // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
+            await _updateFCMToken();
             
             _isLoading = false;
             notifyListeners();
@@ -148,8 +148,8 @@ class AuthProvider with ChangeNotifier {
         // Şoförü online yap
         await _updateDriverStatus(true);
         
-        // ✅ TEST HESABI LOGİN - FCM TOKEN KAYDET!
-        _updateFCMToken();
+        // ✅ TEST HESABI LOGİN - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
+        await _updateFCMToken();
         
         _isLoading = false;
         notifyListeners();
@@ -561,8 +561,24 @@ class AuthProvider with ChangeNotifier {
         return;
       }
       
-      // FCM Token al
+      // FCM Token al (iOS için önce izin!)
       final messaging = FirebaseMessaging.instance;
+      
+      // ✅ iOS için bildirim izni iste!
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      
+      debugPrint('🔔 ŞOFÖR iOS bildirim izni: ${settings.authorizationStatus}');
+      
+      if (settings.authorizationStatus != AuthorizationStatus.authorized && 
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        debugPrint('❌ ŞOFÖR iOS bildirim izni reddedildi!');
+        return;
+      }
+      
       final fcmToken = await messaging.getToken().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -572,7 +588,7 @@ class AuthProvider with ChangeNotifier {
       );
       
       if (fcmToken == null || fcmToken.isEmpty) {
-        debugPrint('⚠️ ŞOFÖR: FCM Token alınamadı');
+        debugPrint('⚠️ ŞOFÖR: FCM Token alınamadı - APNs kontrol et!');
         return;
       }
       
