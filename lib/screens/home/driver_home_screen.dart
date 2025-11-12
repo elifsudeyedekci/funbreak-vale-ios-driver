@@ -260,6 +260,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
   void _showNewRidePopup(Map<String, dynamic> rideData) {
     final rideId = rideData['id']?.toString() ?? '';
     
+    print('🎯 [iOS POPUP] _showNewRidePopup ÇAĞRILDI:');
+    print('   📋 Ride ID: $rideId');
+    print('   📊 Full Data: $rideData');
+    print('   ⏰ scheduled_time: ${rideData['scheduled_time']}');
+    print('   📍 pickup_lat: ${rideData['pickup_lat']}');
+    print('   📍 pickup_lng: ${rideData['pickup_lng']}');
+    
     // DUPLICATE POPUP ÖNLEYİCİ - AYNI TALEP 2 KEZ ÇIKMASIN!
     if (_shownRideIds.contains(rideId)) {
       print('⚠️ [DRIVER_HOME] Duplicate popup engellendi - Ride ID zaten gösterildi: $rideId');
@@ -278,6 +285,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
     final pickupDistanceText = (pickupDistanceRaw.contains('km') || pickupDistanceRaw.contains('m'))
         ? pickupDistanceRaw
         : '$pickupDistanceRaw km';
+    
+    print('✅ [iOS POPUP] İçerik hazırlandı:');
+    print('   ⏰ Scheduled: $scheduledLabel ($scheduledSubtext)');
+    print('   📍 Mesafe: $pickupDistanceText');
     
     showDialog(
       context: context,
@@ -1462,7 +1473,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                                       MaterialPageRoute(
                                         builder: (context) => const EarningsScreen(),
                                       ),
-                                    );
+                                    ).then((_) => _loadTodayStats());
                                   },
                                   icon: const Icon(
                                     Icons.analytics_rounded,
@@ -1590,7 +1601,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                                   MaterialPageRoute(
                                     builder: (context) => const EarningsScreen(),
                                   ),
-                                );
+                                ).then((_) => _loadTodayStats());
                               },
                               borderRadius: BorderRadius.circular(20),
                             child: Container(

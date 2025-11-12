@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -108,6 +109,9 @@ class AuthProvider with ChangeNotifier {
             // Konum takibini başlat
             _locationService.startLocationTracking();
             
+            // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET!
+            _updateFCMToken();
+            
             _isLoading = false;
             notifyListeners();
             return true;
@@ -143,6 +147,9 @@ class AuthProvider with ChangeNotifier {
         
         // Şoförü online yap
         await _updateDriverStatus(true);
+        
+        // ✅ TEST HESABI LOGİN - FCM TOKEN KAYDET!
+        _updateFCMToken();
         
         _isLoading = false;
         notifyListeners();
@@ -538,6 +545,56 @@ class AuthProvider with ChangeNotifier {
       
     } catch (e) {
       print('❌ Profil fotoğrafı güncelleme hatası: $e');
+    }
+  }
+  
+  // ✅ FCM TOKEN GÜNCELLEME - LOGIN SONRASI OTOMATIK ÇAĞRILIR!
+  Future<void> _updateFCMToken() async {
+    try {
+      debugPrint('🔔 ŞOFÖR: FCM Token güncelleme başlatılıyor...');
+      
+      final prefs = await SharedPreferences.getInstance();
+      final driverId = prefs.getString('admin_user_id') ?? prefs.getString('driver_id');
+      
+      if (driverId == null || driverId.isEmpty) {
+        debugPrint('⚠️ ŞOFÖR: Driver ID bulunamadı, token güncellenemedi');
+        return;
+      }
+      
+      // FCM Token al
+      final messaging = FirebaseMessaging.instance;
+      final fcmToken = await messaging.getToken().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⏱️ ŞOFÖR: FCM Token timeout');
+          return null;
+        },
+      );
+      
+      if (fcmToken == null || fcmToken.isEmpty) {
+        debugPrint('⚠️ ŞOFÖR: FCM Token alınamadı');
+        return;
+      }
+      
+      debugPrint('✅ ŞOFÖR: FCM Token alındı: ${fcmToken.substring(0, 20)}...');
+      
+      // Backend'e gönder
+      final response = await http.post(
+        Uri.parse('https://admin.funbreakvale.com/api/update_driver_status.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'driver_id': driverId,
+          'fcm_token': fcmToken,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        debugPrint('✅ ŞOFÖR: FCM Token backend\'e kaydedildi!');
+      } else {
+        debugPrint('⚠️ ŞOFÖR: FCM Token backend kayıt hatası: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ ŞOFÖR: FCM Token güncelleme hatası: $e');
     }
   }
 } 

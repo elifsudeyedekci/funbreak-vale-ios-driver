@@ -413,6 +413,8 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
     
     final distance = (ride['total_distance'] ?? 0).toDouble();
     final createdAt = ride['created_at'] ?? '';
+    final status = ride['status']?.toString() ?? '';
+    final isCancelled = status == 'cancelled';
     
     // Komisyon tutarını hesapla (gösterim için)
     final commission = totalPrice - netEarnings;
@@ -446,14 +448,16 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                   children: [
                     Text(
                       '₺${netEarnings.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                        color: isCancelled ? Colors.red : Colors.green,
                       ),
                     ),
                     Text(
-                      '${distance.toStringAsFixed(1)} km • $createdAt',
+                      isCancelled 
+                        ? '0.0 km (İptal) • $createdAt'
+                        : '${distance.toStringAsFixed(1)} km • $createdAt',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -465,7 +469,7 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
             ],
           ),
           const SizedBox(height: 8),
-          // 🔥 KOMİSYON DETAYI
+          // 🔥 KAZANÇ DETAYI - BACKEND'DEN GELEN TÜM DETAYLAR
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -475,31 +479,114 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
             ),
             child: Column(
               children: [
+                // TABAN ÜCRET
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Toplam: ₺${(totalPrice + (ride['discount_amount'] != null ? double.tryParse(ride['discount_amount'].toString()) ?? 0.0 : 0.0)).toStringAsFixed(2)}',
+                      'Taban Ücret:',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                    ),
+                    Text(
+                      '₺${(ride['initial_estimated_price'] ?? ride['estimated_price'] ?? 0).toStringAsFixed(2)}',
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                   ],
                 ),
+                // BEKLEME ÜCRETİ (Backend'den gelen waiting_fee_amount)
+                if (ride['waiting_fee_amount'] != null && (double.tryParse(ride['waiting_fee_amount'].toString()) ?? 0.0) > 0)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Bekleme Ücreti:',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                      ),
+                      Text(
+                        '+₺${(double.tryParse(ride['waiting_fee_amount'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                // İNDİRİM (varsa)
                 if (ride['discount_amount'] != null && (double.tryParse(ride['discount_amount'].toString()) ?? 0.0) > 0)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'İndirimli: ₺${totalPrice.toStringAsFixed(2)}',
+                        'İndirim:',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                      ),
+                      Text(
+                        '-₺${(double.tryParse(ride['discount_amount'].toString()) ?? 0.0).toStringAsFixed(2)}',
                         style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
+                const Divider(height: 12, thickness: 1),
+                // ✅ İPTAL DURUMU UYARISI
+                if (isCancelled)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cancel, color: Colors.red[700], size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Yolculuk iptal edildi. İptal ücreti alındı.',
+                            style: TextStyle(fontSize: 11, color: Colors.red[900], fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // BRÜT ÜCRET (final_price = taban + bekleme - indirim)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Komisyon (%${commissionRate.toStringAsFixed(0)}): -₺${commission.toStringAsFixed(2)}',
+                      isCancelled ? 'İptal Ücreti:' : 'Brüt Ücret:',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '₺${totalPrice.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                // KOMİSYON
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Komisyon (%${commissionRate.toStringAsFixed(0)}):',
                       style: const TextStyle(fontSize: 11, color: Colors.red),
+                    ),
+                    Text(
+                      '-₺${commission.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 11, color: Colors.red),
+                    ),
+                  ],
+                ),
+                const Divider(height: 12, thickness: 1),
+                // ALDIĞINIZ TUTAR (Net Kazanç)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Aldığınız Tutar:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                    Text(
+                      '₺${netEarnings.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
                     ),
                   ],
                 ),

@@ -785,16 +785,19 @@ class _RideChatScreenState extends State<RideChatScreen> {
       String? locationName;
       
       if (locationChoice == 'current') {
-        // MEVCUT KONUM - İZİN KONTROLÜ
-        var permission = await Permission.location.status;
+        // MEVCUT KONUM - DİREK İZİN İSTE!
+        final permission = await Permission.location.request();
         if (!permission.isGranted) {
-          permission = await Permission.location.request();
-          if (!permission.isGranted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('❌ Konum izni gerekli!')),
-            );
-            return;
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('❌ Konum izni gerekli!'),
+              action: SnackBarAction(
+                label: 'Ayarlar',
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
+          return;
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1142,16 +1145,19 @@ class _RideChatScreenState extends State<RideChatScreen> {
 
   Future<void> _startRecording() async {
     try {
-      // MİKROFON İZNİ KONTROLÜ - İZİN VARSA REQUEST ÇAĞIRMA!
-      var permission = await Permission.microphone.status;
+      // MİKROFON İZNİ - DİREK İSTE!
+      final permission = await Permission.microphone.request();
       if (!permission.isGranted) {
-        permission = await Permission.microphone.request();
-        if (!permission.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('❌ Mikrofon izni gerekli!')),
-          );
-          return;
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('❌ Mikrofon izni gerekli!'),
+            action: SnackBarAction(
+              label: 'Ayarlar',
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+        return;
       }
       
       final directory = await getApplicationDocumentsDirectory();

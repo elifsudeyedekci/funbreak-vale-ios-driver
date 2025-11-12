@@ -973,6 +973,25 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                       fontSize: 9,
                     ),
                   ),
+                  // ✅ SAATLİK PAKET ETİKETİ
+                  if ((widget.rideDetails['service_type']?.toString() == 'hourly') ||
+                      (widget.rideDetails['destination_address']?.toString().toLowerCase().contains('saatlik') ?? false))
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Saatlik Paket',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
