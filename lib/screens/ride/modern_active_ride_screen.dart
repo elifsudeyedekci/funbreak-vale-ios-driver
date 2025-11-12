@@ -2333,8 +2333,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'ride_id': int.tryParse(rideId) ?? 0,
-          'current_km': currentKm.toStringAsFixed(1),
-          'waiting_minutes': _waitingMinutes,
+          'current_km': _isHourlyPackage() ? 0 : currentKm.toStringAsFixed(1), // SAATLİK PAKETTE KM=0
+          'waiting_minutes': _isHourlyPackage() ? 0 : _waitingMinutes, // SAATLİK PAKETTE BEKLEME=0
           // waiting_started SİLİNDİ! Her 5sn gönderince backend sıfırlıyor!
           // Sadece BAŞLAT/DURDUR butonlarında gönderilecek!
           'driver_lat': _driverLocation?.latitude ?? 0.0,
