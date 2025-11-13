@@ -381,22 +381,53 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       ),
                     ],
                   ),
-                  // ÇİZGİ (ALIŞ-VARIŞ ARASI) - İCON MERKEZİNDE
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12), // Icon başlangıcı
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 11, top: 8, bottom: 8), // Icon merkezi (24/2 = 12, ama 1 px offset)
-                      width: 2,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.green.withOpacity(0.5), Colors.red.withOpacity(0.5)],
+                  // 🛣️ ÇİZGİ VE ARA DURAKLAR - ARA DURAK VARSA ONLARI GÖSTER, YOKSA DİREKT ÇİZGİ
+                  if (rideData['waypoints'] != null && rideData['waypoints'] != '') ...[
+                    // ARA DURAK VAR - Önce pickup'tan ilk ara durağa yeşil çizgi
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 11, top: 8, bottom: 8),
+                        width: 2,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.5),
                         ),
                       ),
                     ),
-                  ),
+                    // ARA DURAKLAR LİSTESİ
+                    ..._buildWaypointsWidget(rideData['waypoints']),
+                    // Son ara duraktan destination'a kırmızı çizgi
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 11, top: 8, bottom: 8),
+                        width: 2,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // ARA DURAK YOK - Direkt pickup'tan destination'a gradient çizgi
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 11, top: 8, bottom: 8),
+                        width: 2,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.green.withOpacity(0.5), Colors.red.withOpacity(0.5)],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  // VARIş NOKTASI
                   Row(
                     children: [
                       const Icon(Icons.flag, color: Colors.red, size: 24),
@@ -412,9 +443,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       ),
                     ],
                   ),
-                  // 🛣️ ARA DURAKLAR GÖSTER!
-                  if (rideData['waypoints'] != null && rideData['waypoints'] != '')
-                    ..._buildWaypointsWidget(rideData['waypoints']),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -1190,28 +1218,42 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                 // Koordinatları farklı formatlardan al
                 dynamic lat, lng;
                 
+                print('🔍 DEBUG - Waypoint #${index + 1} RAW DATA:');
+                print('   waypoint: $waypoint');
+                
                 // Format 1: location/konum array [lat, lng] - Backend hem "location" hem "konum" gönderebilir!
                 dynamic locationArray = waypoint['location'] ?? waypoint['konum'];
                 
                 if (locationArray != null && locationArray is List && locationArray.length >= 2) {
                   lat = locationArray[0];
                   lng = locationArray[1];
-                  print('   ✅ Format: location/konum array - Lat: $lat, Lng: $lng');
+                  print('   ✅ Format: location/konum array');
+                  print('      locationArray: $locationArray');
+                  print('      lat: $lat (${lat.runtimeType})');
+                  print('      lng: $lng (${lng.runtimeType})');
                 } else {
                   // Format 2: latitude/longitude veya lat/lng object keys
                   lat = waypoint['latitude'] ?? waypoint['lat'] ?? waypoint['enlem'];
                   lng = waypoint['longitude'] ?? waypoint['lng'] ?? waypoint['boylam'];
-                  print('   ℹ️ Format: object keys - Lat: $lat, Lng: $lng');
+                  print('   ℹ️ Format: object keys');
+                  print('      lat: $lat (${lat?.runtimeType ?? "null"})');
+                  print('      lng: $lng (${lng?.runtimeType ?? "null"})');
                 }
+                
+                // Koordinatları double'a çevir
+                double? latDouble = lat is num ? lat.toDouble() : double.tryParse(lat?.toString() ?? '');
+                double? lngDouble = lng is num ? lng.toDouble() : double.tryParse(lng?.toString() ?? '');
+                
+                print('   🎯 FINAL: latDouble=$latDouble, lngDouble=$lngDouble');
                 
                 return Column(
                   children: [
                     // ÇİZGİ (İLK SATIR DIŞINDA) - CIRCLE MERKEZİNDE
                     if (index > 0)
                       Container(
-                        margin: const EdgeInsets.only(left: 23, bottom: 8), // Circle merkezi (24/2 = 12 + 12 margin = 24, ama 1 px offset = 23)
+                        margin: const EdgeInsets.only(left: 11, bottom: 8), // Circle merkezi (24/2 = 12, ama border 1px = 11)
                         width: 2,
-                        height: 16,
+                        height: 20,
                         color: Colors.orange.withOpacity(0.5),
                       ),
                     // TIKLANABİLİR ARA DURAK SATIRI
@@ -1219,15 +1261,22 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       onTap: () {
                         print('🗺️ Ara Durak #${index + 1} Tıklandı:');
                         print('   Adres: $address');
-                        print('   Lat: $lat (Type: ${lat.runtimeType})');
-                        print('   Lng: $lng (Type: ${lng.runtimeType})');
+                        print('   LatDouble: $latDouble');
+                        print('   LngDouble: $lngDouble');
                         
-                        if (lat != null && lng != null) {
-                          _openNavigationToWaypoint(lat.toString(), lng.toString(), address);
+                        if (latDouble != null && lngDouble != null) {
+                          print('   ✅ KOORDİNATLAR GEÇERLİ - Navigasyon açılıyor...');
+                          _openNavigationToWaypoint(latDouble.toString(), lngDouble.toString(), address);
                         } else {
-                          print('   ❌ Koordinatlar NULL!');
+                          print('   ❌ Koordinatlar NULL veya PARSE EDİLEMEDİ!');
+                          print('      Raw lat: $lat');
+                          print('      Raw lng: $lng');
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('❌ Ara durak koordinatları bulunamadı'), backgroundColor: Colors.red),
+                            const SnackBar(
+                              content: Text('❌ Ara durak koordinatları bulunamadı veya hatalı format'),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 3),
+                            ),
                           );
                         }
                       },
