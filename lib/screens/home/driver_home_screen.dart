@@ -1184,18 +1184,24 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
               ...waypoints.asMap().entries.map((entry) {
                 final index = entry.key;
                 final waypoint = entry.value;
-                final address = waypoint['address'] ?? 'Ara Durak ${index + 1}';
+                // Backend hem "address" hem "adres" gönderebilir!
+                final address = waypoint['address'] ?? waypoint['adres'] ?? 'Ara Durak ${index + 1}';
                 
                 // Koordinatları farklı formatlardan al
                 dynamic lat, lng;
-                if (waypoint['location'] != null && waypoint['location'] is List && waypoint['location'].length >= 2) {
-                  // Format 1: location array [lat, lng]
-                  lat = waypoint['location'][0];
-                  lng = waypoint['location'][1];
+                
+                // Format 1: location/konum array [lat, lng] - Backend hem "location" hem "konum" gönderebilir!
+                dynamic locationArray = waypoint['location'] ?? waypoint['konum'];
+                
+                if (locationArray != null && locationArray is List && locationArray.length >= 2) {
+                  lat = locationArray[0];
+                  lng = locationArray[1];
+                  print('   ✅ Format: location/konum array - Lat: $lat, Lng: $lng');
                 } else {
-                  // Format 2: latitude/longitude veya lat/lng
-                  lat = waypoint['latitude'] ?? waypoint['lat'];
-                  lng = waypoint['longitude'] ?? waypoint['lng'];
+                  // Format 2: latitude/longitude veya lat/lng object keys
+                  lat = waypoint['latitude'] ?? waypoint['lat'] ?? waypoint['enlem'];
+                  lng = waypoint['longitude'] ?? waypoint['lng'] ?? waypoint['boylam'];
+                  print('   ℹ️ Format: object keys - Lat: $lat, Lng: $lng');
                 }
                 
                 return Column(
