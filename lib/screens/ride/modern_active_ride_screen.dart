@@ -4037,9 +4037,29 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   
   // NAVİGASYON FONKSİYONLARI - ADRESLERE TIKLANABİLİR!
   void _openNavigationToPickup() {
+    // 🔍 DEBUG: Koordinatları kontrol et
+    print('🔍 [NAVİGASYON DEBUG] widget.rideDetails pickup_lat: ${widget.rideDetails['pickup_lat']} (Type: ${widget.rideDetails['pickup_lat'].runtimeType})');
+    print('🔍 [NAVİGASYON DEBUG] widget.rideDetails pickup_lng: ${widget.rideDetails['pickup_lng']} (Type: ${widget.rideDetails['pickup_lng'].runtimeType})');
+    
     // ✅ Koordinatları double'a çevir (String olarak gelebilir)
-    final pickupLat = double.tryParse(widget.rideDetails['pickup_lat']?.toString() ?? '') ?? 41.0082;
-    final pickupLng = double.tryParse(widget.rideDetails['pickup_lng']?.toString() ?? '') ?? 28.9784;
+    final pickupLatStr = widget.rideDetails['pickup_lat']?.toString() ?? '';
+    final pickupLngStr = widget.rideDetails['pickup_lng']?.toString() ?? '';
+    
+    print('🔍 [NAVİGASYON DEBUG] Parse öncesi: lat="$pickupLatStr", lng="$pickupLngStr"');
+    
+    final pickupLat = double.tryParse(pickupLatStr);
+    final pickupLng = double.tryParse(pickupLngStr);
+    
+    print('🔍 [NAVİGASYON DEBUG] Parse sonrası: lat=$pickupLat, lng=$pickupLng');
+    
+    if (pickupLat == null || pickupLng == null) {
+      print('❌ [NAVİGASYON HATA] Koordinatlar parse edilemedi! Default kullanılmayacak - İşlem iptal!');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Konum bilgisi alınamadı')),
+      );
+      return;
+    }
+    
     final pickupAddress = widget.rideDetails['pickup_address'] ?? 'Alış konumu';
     
     print('🗺️ [ŞOFÖR] Pickup navigasyon açılıyor: lat=$pickupLat, lng=$pickupLng');
@@ -4048,9 +4068,29 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   }
   
   void _openNavigationToDestination() {
+    // 🔍 DEBUG: Koordinatları kontrol et
+    print('🔍 [NAVİGASYON DEBUG] widget.rideDetails destination_lat: ${widget.rideDetails['destination_lat']} (Type: ${widget.rideDetails['destination_lat'].runtimeType})');
+    print('🔍 [NAVİGASYON DEBUG] widget.rideDetails destination_lng: ${widget.rideDetails['destination_lng']} (Type: ${widget.rideDetails['destination_lng'].runtimeType})');
+    
     // ✅ Koordinatları double'a çevir (String olarak gelebilir)
-    final destLat = double.tryParse(widget.rideDetails['destination_lat']?.toString() ?? '') ?? 41.0082;
-    final destLng = double.tryParse(widget.rideDetails['destination_lng']?.toString() ?? '') ?? 28.9784;
+    final destLatStr = widget.rideDetails['destination_lat']?.toString() ?? '';
+    final destLngStr = widget.rideDetails['destination_lng']?.toString() ?? '';
+    
+    print('🔍 [NAVİGASYON DEBUG] Parse öncesi: lat="$destLatStr", lng="$destLngStr"');
+    
+    final destLat = double.tryParse(destLatStr);
+    final destLng = double.tryParse(destLngStr);
+    
+    print('🔍 [NAVİGASYON DEBUG] Parse sonrası: lat=$destLat, lng=$destLng');
+    
+    if (destLat == null || destLng == null) {
+      print('❌ [NAVİGASYON HATA] Koordinatlar parse edilemedi! Default kullanılmayacak - İşlem iptal!');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Varış konumu bilgisi alınamadı')),
+      );
+      return;
+    }
+    
     final destAddress = widget.rideDetails['destination_address'] ?? 'Varış konumu';
     
     print('🗺️ [ŞOFÖR] Destination navigasyon açılıyor: lat=$destLat, lng=$destLng');
