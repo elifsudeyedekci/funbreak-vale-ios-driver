@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'widgets/driver_status_card.dart'; // YENİ WIDGET!
 import 'widgets/driver_toggle_section.dart'; // YENİ WIDGET!
 import '../earnings/earnings_screen.dart'; // KAZANÇ ANALİZİ EKRANI!
+import 'package:url_launcher/url_launcher.dart'; // NAVİGASYON İÇİN!
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({Key? key}) : super(key: key);
@@ -380,7 +381,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  // ÇİZGİ (ALIŞ-VARIŞ ARASI)
+                  Container(
+                    margin: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+                    width: 2,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.green.withOpacity(0.5), Colors.red.withOpacity(0.5)],
+                      ),
+                    ),
+                  ),
                   Row(
                     children: [
                       const Icon(Icons.flag, color: Colors.red, size: 24),
@@ -1169,35 +1182,63 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                 final index = entry.key;
                 final waypoint = entry.value;
                 final address = waypoint['address'] ?? 'Ara Durak ${index + 1}';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
+                final lat = waypoint['latitude'] ?? waypoint['lat'];
+                final lng = waypoint['longitude'] ?? waypoint['lng'];
+                
+                return Column(
+                  children: [
+                    // ÇİZGİ (İLK SATIR DIŞINDA)
+                    if (index > 0)
                       Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
+                        margin: const EdgeInsets.only(left: 12, bottom: 8),
+                        width: 2,
+                        height: 16,
+                        color: Colors.orange.withOpacity(0.5),
+                      ),
+                    // TIKLANABİLİR ARA DURAK SATIRI
+                    InkWell(
+                      onTap: () {
+                        if (lat != null && lng != null) {
+                          _openNavigationToWaypoint(lat.toString(), lng.toString(), address);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('❌ Ara durak koordinatları bulunamadı')),
+                          );
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: const BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                address,
+                                style: const TextStyle(fontSize: 13, color: Colors.black87, decoration: TextDecoration.underline),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Icon(Icons.navigation, size: 18, color: Colors.orange),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          address,
-                          style: const TextStyle(fontSize: 13, color: Colors.black87),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               }).toList(),
             ],
@@ -2116,6 +2157,44 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
       
     } catch (e) {
       print('❌ ŞOFÖR: Persistence kaydetme hatası: $e');
+    }
+  }
+  
+  // 🗺️ ARA DURAK NAVİGASYON AÇMA FONKSİYONU
+  Future<void> _openNavigationToWaypoint(String lat, String lng, String address) async {
+    try {
+      print('🗺️ Ara durak navigasyonu açılıyor: $lat, $lng');
+      
+      // Yandex Maps URL (öncelikli)
+      final yandexUrl = 'yandexmaps://maps.yandex.com/?rtext=~$lat,$lng&rtt=auto';
+      final yandexUri = Uri.parse(yandexUrl);
+      
+      // Google Maps URL (yedek)
+      final googleUrl = 'google.navigation:q=$lat,$lng&mode=d';
+      final googleUri = Uri.parse(googleUrl);
+      
+      // Önce Yandex'i dene
+      if (await canLaunchUrl(yandexUri)) {
+        await launchUrl(yandexUri, mode: LaunchMode.externalApplication);
+        print('✅ Yandex Maps açıldı - Ara Durak: $address');
+      } else if (await canLaunchUrl(googleUri)) {
+        // Yandex yoksa Google Maps aç
+        await launchUrl(googleUri, mode: LaunchMode.externalApplication);
+        print('✅ Google Maps açıldı - Ara Durak: $address');
+      } else {
+        // Hiçbiri yoksa web'de aç
+        final webUrl = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
+        final webUri = Uri.parse(webUrl);
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+        print('✅ Web Maps açıldı - Ara Durak: $address');
+      }
+    } catch (e) {
+      print('❌ Navigasyon hatası: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Navigasyon açılamadı: $e')),
+        );
+      }
     }
   }
 }
