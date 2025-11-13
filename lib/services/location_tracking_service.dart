@@ -44,9 +44,9 @@ class LocationTrackingService {
         // ✅ ANDROID - Foreground Service ile arka plan
         locationSettings = AndroidSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 5, // 5 metre hareket = daha hassas
+          distanceFilter: 0, // ✅ 0 = HER GÜNCELLEME GÖNDERİLSİN! (Backend filtreler)
           forceLocationManager: false,
-          intervalDuration: Duration(seconds: 3), // ✅ Her 3 saniye
+          intervalDuration: Duration(seconds: 2), // ✅ Her 2 saniye (daha hızlı!)
           foregroundNotificationConfig: ForegroundNotificationConfig(
             notificationText: "Yolculuk takibi devam ediyor",
             notificationTitle: "FunBreak Vale - Konum Aktif",
@@ -59,7 +59,7 @@ class LocationTrackingService {
         locationSettings = AppleSettings(
           accuracy: LocationAccuracy.high,
           activityType: ActivityType.automotiveNavigation, // Araç navigasyon
-          distanceFilter: 5,
+          distanceFilter: 0, // ✅ 0 = HER GÜNCELLEME GÖNDERİLSİN!
           pauseLocationUpdatesAutomatically: false, // ✅ Otomatik DURAKLATMA YOK!
           showBackgroundLocationIndicator: true, // iOS arka plan çubuğu
           allowBackgroundLocationUpdates: true, // ✅ ARKA PLAN KRİTİK!
@@ -68,7 +68,7 @@ class LocationTrackingService {
         // Fallback - Generic settings
         locationSettings = LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
+          distanceFilter: 0,
           timeLimit: Duration(minutes: 30),
         );
       }
@@ -81,8 +81,8 @@ class LocationTrackingService {
         print('📍 STREAM KONUM: ${position.latitude}, ${position.longitude}, Accuracy: ${position.accuracy}m');
       });
       
-      // ✅ Periyodik güncelleme timer'ı (3 saniyede bir - DAHA HIZLI!)
-      _locationTimer = Timer.periodic(Duration(seconds: 3), (timer) async {
+      // ✅ Periyodik güncelleme timer'ı (2 saniyede bir - DAHA HIZLI!)
+      _locationTimer = Timer.periodic(Duration(seconds: 2), (timer) async {
         if (_lastKnownPosition != null) {
           await _sendLocationToServer(driverId, _lastKnownPosition!);
         } else {

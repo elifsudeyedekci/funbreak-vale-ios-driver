@@ -550,34 +550,54 @@ class AuthProvider with ChangeNotifier {
   
   // ✅ FCM TOKEN GÜNCELLEME - LOGIN SONRASI OTOMATIK ÇAĞRILIR!
   Future<void> _updateFCMToken() async {
+    debugPrint('🔔🔔🔔 iOS VALE (ŞOFÖR): _updateFCMToken() BAŞLADI! 🔔🔔🔔');
     try {
       debugPrint('🔔 ŞOFÖR: FCM Token güncelleme başlatılıyor...');
       
       final prefs = await SharedPreferences.getInstance();
+      
+      // ✅ DEBUG: Tüm key'leri kontrol et
+      final allKeys = prefs.getKeys();
+      debugPrint('🔍 iOS VALE FCM: SharedPreferences keys: $allKeys');
+      debugPrint('🔍 iOS VALE FCM: admin_user_id = ${prefs.getString('admin_user_id')}');
+      debugPrint('🔍 iOS VALE FCM: driver_id = ${prefs.getString('driver_id')}');
+      debugPrint('🔍 iOS VALE FCM: user_id = ${prefs.getString('user_id')}');
+      
       final driverId = prefs.getString('admin_user_id') ?? prefs.getString('driver_id');
       
+      debugPrint('🔍 iOS VALE FCM: Final driverId = $driverId');
+      
       if (driverId == null || driverId.isEmpty) {
-        debugPrint('⚠️ ŞOFÖR: Driver ID bulunamadı, token güncellenemedi');
+        debugPrint('❌❌❌ iOS VALE: Driver ID NULL - RETURN EDİYOR! ❌❌❌');
         return;
       }
       
+      debugPrint('✅ iOS VALE: Driver ID BULUNDU: $driverId - Devam ediliyor...');
+      
       // FCM Token al (iOS için önce izin!)
+      debugPrint('📱 iOS VALE: FirebaseMessaging instance alınıyor...');
       final messaging = FirebaseMessaging.instance;
+      debugPrint('✅ iOS VALE: FirebaseMessaging instance alındı!');
       
       // ✅ iOS için bildirim izni iste!
+      debugPrint('🔔 iOS VALE: Bildirim izni isteniyor...');
       final settings = await messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
+      debugPrint('✅ iOS VALE: İzin isteği tamamlandı!');
       
       debugPrint('🔔 ŞOFÖR iOS bildirim izni: ${settings.authorizationStatus}');
+      debugPrint('🔔 Alert: ${settings.alert}, Badge: ${settings.badge}, Sound: ${settings.sound}');
       
       if (settings.authorizationStatus != AuthorizationStatus.authorized && 
           settings.authorizationStatus != AuthorizationStatus.provisional) {
-        debugPrint('❌ ŞOFÖR iOS bildirim izni reddedildi!');
+        debugPrint('❌❌❌ iOS VALE: Bildirim izni REDDEDİLDİ - Status: ${settings.authorizationStatus} ❌❌❌');
         return;
       }
+      
+      debugPrint('✅ iOS VALE: İzin VERİLDİ - Token alınacak...');
       
       final fcmToken = await messaging.getToken().timeout(
         const Duration(seconds: 10),
@@ -593,24 +613,37 @@ class AuthProvider with ChangeNotifier {
       }
       
       debugPrint('✅ ŞOFÖR: FCM Token alındı: ${fcmToken.substring(0, 20)}...');
+      debugPrint('📤 iOS VALE: Backend\'e gönderiliyor - Driver ID: $driverId');
       
       // Backend'e gönder
-      final response = await http.post(
-        Uri.parse('https://admin.funbreakvale.com/api/update_driver_status.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'driver_id': driverId,
-          'fcm_token': fcmToken,
-        }),
-      ).timeout(const Duration(seconds: 10));
-      
-      if (response.statusCode == 200) {
-        debugPrint('✅ ŞOFÖR: FCM Token backend\'e kaydedildi!');
-      } else {
-        debugPrint('⚠️ ŞOFÖR: FCM Token backend kayıt hatası: ${response.statusCode}');
+      try {
+        debugPrint('🌐 iOS VALE: HTTP POST başlatılıyor (update_driver_status.php)...');
+        final response = await http.post(
+          Uri.parse('https://admin.funbreakvale.com/api/update_driver_status.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'driver_id': driverId,
+            'fcm_token': fcmToken,
+          }),
+        ).timeout(const Duration(seconds: 10));
+        
+        debugPrint('📥 iOS VALE: HTTP Response alındı - Status: ${response.statusCode}');
+        
+        if (response.statusCode == 200) {
+          final responseData = jsonDecode(response.body);
+          debugPrint('✅✅✅ iOS VALE: FCM Token backend\'e kaydedildi! ✅✅✅');
+          debugPrint('🔍 iOS VALE FCM: Backend response = $responseData');
+        } else {
+          debugPrint('⚠️⚠️ iOS VALE: FCM Token backend kayıt hatası: ${response.statusCode} ⚠️⚠️');
+          debugPrint('🔍 iOS VALE FCM: Response body = ${response.body}');
+        }
+      } catch (httpError) {
+        debugPrint('❌❌ iOS VALE: HTTP REQUEST HATASI: $httpError ❌❌');
+        rethrow;
       }
-    } catch (e) {
-      debugPrint('❌ ŞOFÖR: FCM Token güncelleme hatası: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌❌❌ iOS VALE: FCM Token güncelleme EXCEPTION: $e ❌❌❌');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 } 

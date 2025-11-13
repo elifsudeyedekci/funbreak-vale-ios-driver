@@ -1313,6 +1313,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             color: Colors.white.withOpacity(0.3),
           ),
           
+          // ✅ ARA DURAKLAR (WAYPOINTS) - VARSA GÖSTER!
+          ..._buildWaypoints(),
+          
           // Varış noktası - TIKLANABİLİR NAVİGASYON!
           InkWell(
             onTap: () => _openNavigationToDestination(),
@@ -3955,22 +3958,103 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     return degrees * (math.pi / 180.0);
   }
   
+  // ✅ ARA DURAKLAR (WAYPOINTS) WİDGET LİSTESİ OLUŞTUR!
+  List<Widget> _buildWaypoints() {
+    try {
+      final waypointsJson = widget.rideDetails['waypoints'];
+      if (waypointsJson == null || waypointsJson.toString().isEmpty) {
+        return [];
+      }
+      
+      // JSON parse et
+      List<dynamic> waypoints = [];
+      if (waypointsJson is String) {
+        waypoints = jsonDecode(waypointsJson);
+      } else if (waypointsJson is List) {
+        waypoints = waypointsJson;
+      }
+      
+      if (waypoints.isEmpty) {
+        return [];
+      }
+      
+      // Waypoints widget listesi
+      List<Widget> waypointWidgets = [];
+      for (int i = 0; i < waypoints.length; i++) {
+        final waypoint = waypoints[i];
+        final address = waypoint['address'] ?? waypoint['name'] ?? 'Ara Durak ${i + 1}';
+        
+        // Çizgi
+        waypointWidgets.add(
+          Container(
+            margin: const EdgeInsets.only(left: 5, top: 0, bottom: 8),
+            width: 2,
+            height: 15,
+            color: Colors.orange.withOpacity(0.5),
+          ),
+        );
+        
+        // Waypoint
+        waypointWidgets.add(
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '📍 $address',
+                  style: TextStyle(
+                    color: Colors.orange[300],
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+        
+        waypointWidgets.add(const SizedBox(height: 8));
+      }
+      
+      return waypointWidgets;
+      
+    } catch (e) {
+      print('❌ Waypoints parse hatası: $e');
+      return [];
+    }
+  }
+  
   // NAVİGASYON FONKSİYONLARI - ADRESLERE TIKLANABİLİR!
   void _openNavigationToPickup() {
-    final pickupLat = widget.rideDetails['pickup_lat'] ?? 41.0082;
-    final pickupLng = widget.rideDetails['pickup_lng'] ?? 28.9784;
+    // ✅ Koordinatları double'a çevir (String olarak gelebilir)
+    final pickupLat = double.tryParse(widget.rideDetails['pickup_lat']?.toString() ?? '') ?? 41.0082;
+    final pickupLng = double.tryParse(widget.rideDetails['pickup_lng']?.toString() ?? '') ?? 28.9784;
     final pickupAddress = widget.rideDetails['pickup_address'] ?? 'Alış konumu';
     
-    print('🗺️ [ŞOFÖR] Pickup navigasyon açılıyor...');
+    print('🗺️ [ŞOFÖR] Pickup navigasyon açılıyor: lat=$pickupLat, lng=$pickupLng');
+    print('   📍 Adres: $pickupAddress');
     _openDirectNavigation(pickupLat, pickupLng, pickupAddress);
   }
   
   void _openNavigationToDestination() {
-    final destLat = widget.rideDetails['destination_lat'] ?? 41.0082;
-    final destLng = widget.rideDetails['destination_lng'] ?? 28.9784;
+    // ✅ Koordinatları double'a çevir (String olarak gelebilir)
+    final destLat = double.tryParse(widget.rideDetails['destination_lat']?.toString() ?? '') ?? 41.0082;
+    final destLng = double.tryParse(widget.rideDetails['destination_lng']?.toString() ?? '') ?? 28.9784;
     final destAddress = widget.rideDetails['destination_address'] ?? 'Varış konumu';
     
-    print('🗺️ [ŞOFÖR] Destination navigasyon açılıyor...');
+    print('🗺️ [ŞOFÖR] Destination navigasyon açılıyor: lat=$destLat, lng=$destLng');
+    print('   📍 Adres: $destAddress');
     _openDirectNavigation(destLat, destLng, destAddress);
   }
   

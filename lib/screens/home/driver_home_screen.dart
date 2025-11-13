@@ -924,29 +924,38 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
       }
       
       try {
-        final scheduledDateTime = DateTime.tryParse(scheduledTime);
-        if (scheduledDateTime == null) {
-          return 'Hemen';
-        }
+        // ✅ Backend TR timezone (UTC+3) gönderdiği için local olarak parse et
+        final scheduledDateTime = DateTime.parse(scheduledTime);
         
+        // ✅ Phone local time yerine aynı timezone'da karşılaştırma yap
+        // Backend zaten TR time gönderdiği için doğrudan karşılaştırabiliriz
         final now = DateTime.now();
+        
+        // ✅ Backend'den gelen zaman zaten TR timezone'da (local), phone time da local
+        // İkisi de aynı timezone'daysa karşılaştırma doğru olur
         final difference = scheduledDateTime.difference(now);
         
-        print('   ⏰ Scheduled DateTime: $scheduledDateTime');
-        print('   🕐 Now: $now');
-        print('   ⏱️ Difference: ${difference.inMinutes} dakika');
+        print('   ⏰ Scheduled DateTime: $scheduledDateTime (Backend TR time)');
+        print('   🕐 Now: $now (Phone local time)');
+        print('   ⏱️ Difference: ${difference.inMinutes} dakika (${difference.inHours} saat)');
         
-        // Eğer gelecekte bir zaman ise saat göster
-        if (difference.inMinutes > 15) {
+        // ✅ Gelecekte bir zaman ise saat göster
+        // 5 dakikadan fazla fark varsa scheduled olarak göster (15 yerine 5)
+        if (difference.inMinutes > 5) {
           if (scheduledDateTime.day == now.day) {
             // Aynı gün - sadece saat:dakika
-            return '${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}';
+            final timeStr = '${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}';
+            print('   ✅ SONUÇ: "$timeStr" (aynı gün, ${difference.inMinutes} dk sonra)');
+            return timeStr;
           } else {
             // Farklı gün - gün.ay saat:dakika
-            return '${scheduledDateTime.day}.${scheduledDateTime.month} ${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}';
+            final timeStr = '${scheduledDateTime.day}.${scheduledDateTime.month} ${scheduledDateTime.hour.toString().padLeft(2, '0')}:${scheduledDateTime.minute.toString().padLeft(2, '0')}';
+            print('   ✅ SONUÇ: "$timeStr" (farklı gün)');
+            return timeStr;
           }
         }
         
+        print('   ✅ SONUÇ: "Hemen" (${difference.inMinutes} dk <= 5 dk)');
         return 'Hemen';
         
       } catch (e) {
