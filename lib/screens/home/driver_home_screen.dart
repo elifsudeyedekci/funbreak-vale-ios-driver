@@ -391,6 +391,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       ),
                     ],
                   ),
+                  // 🛣️ ARA DURAKLAR GÖSTER!
+                  if (rideData['waypoints'] != null && rideData['waypoints'] != '')
+                    ..._buildWaypointsWidget(rideData['waypoints']),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -1113,6 +1116,88 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
         ],
       ),
     );
+  }
+
+  // 🛣️ ARA DURAKLAR WIDGET BUILDER
+  List<Widget> _buildWaypointsWidget(dynamic waypointsData) {
+    try {
+      List<dynamic> waypoints = [];
+      
+      // JSON string ise parse et
+      if (waypointsData is String && waypointsData.isNotEmpty) {
+        waypoints = jsonDecode(waypointsData);
+      } else if (waypointsData is List) {
+        waypoints = waypointsData;
+      }
+      
+      if (waypoints.isEmpty) return [];
+      
+      return [
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.alt_route, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    '🛣️ Ara Duraklar (${waypoints.length})',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...waypoints.asMap().entries.map((entry) {
+                final index = entry.key;
+                final waypoint = entry.value;
+                final address = waypoint['address'] ?? 'Ara Durak ${index + 1}';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          address,
+                          style: const TextStyle(fontSize: 13, color: Colors.black87),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
+      ];
+    } catch (e) {
+      print('⚠️ Waypoints widget hatası: $e');
+      return [];
+    }
   }
   
   // GERÇEK MESAFE HESAPLAMA (ESKİ FONKSIYON KORUNDU)!

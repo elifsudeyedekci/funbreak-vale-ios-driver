@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Ride {
@@ -31,6 +32,7 @@ class Ride {
   final String? pricingPackageId;
   final double? commissionAmount;
   final DateTime? scheduledTime; // TALEP ZAMANI EKLE!
+  final List<Map<String, dynamic>>? waypoints; // 🛣️ ARA DURAKLAR!
 
   Ride({
     required this.id,
@@ -61,6 +63,7 @@ class Ride {
     this.pricingPackageId,
     this.commissionAmount,
     this.scheduledTime, // SCHEDULED TIME PARAMETER EKLE!
+    this.waypoints, // 🛣️ ARA DURAKLAR PARAMETER!
   });
 
   factory Ride.fromMap(Map<String, dynamic> map, String id) {
@@ -68,14 +71,21 @@ class Ride {
     double pickupLat = 0.0, pickupLng = 0.0;
     double destLat = 0.0, destLng = 0.0;
     
-    if (map['pickupLocation'] != null) {
+    // BACKEND snake_case (pickup_lat) ve camelCase (pickupLocation) DESTEK!
+    if (map['pickup_lat'] != null && map['pickup_lng'] != null) {
+      pickupLat = (map['pickup_lat'] ?? 0.0).toDouble();
+      pickupLng = (map['pickup_lng'] ?? 0.0).toDouble();
+    } else if (map['pickupLocation'] != null) {
       if (map['pickupLocation'] is Map) {
         pickupLat = (map['pickupLocation']['latitude'] ?? 0.0).toDouble();
         pickupLng = (map['pickupLocation']['longitude'] ?? 0.0).toDouble();
       }
     }
     
-    if (map['destinationLocation'] != null) {
+    if (map['destination_lat'] != null && map['destination_lng'] != null) {
+      destLat = (map['destination_lat'] ?? 0.0).toDouble();
+      destLng = (map['destination_lng'] ?? 0.0).toDouble();
+    } else if (map['destinationLocation'] != null) {
       if (map['destinationLocation'] is Map) {
         destLat = (map['destinationLocation']['latitude'] ?? 0.0).toDouble();
         destLng = (map['destinationLocation']['longitude'] ?? 0.0).toDouble();
@@ -114,7 +124,31 @@ class Ride {
       commissionAmount: map['commissionAmount']?.toDouble(),
       scheduledTime: map['scheduledTime'] is DateTime ? map['scheduledTime'] : 
                     (map['scheduled_time'] != null ? DateTime.tryParse(map['scheduled_time'].toString()) : null), // SCHEDULED TIME PARSE!
+      waypoints: _parseWaypoints(map['waypoints']), // 🛣️ ARA DURAKLAR PARSE!
     );
+  }
+
+  // 🛣️ Waypoints JSON parse helper
+  static List<Map<String, dynamic>>? _parseWaypoints(dynamic waypointsData) {
+    if (waypointsData == null) return null;
+    
+    try {
+      // JSON string ise decode et
+      if (waypointsData is String) {
+        final decoded = json.decode(waypointsData);
+        if (decoded is List) {
+          return decoded.map((w) => Map<String, dynamic>.from(w as Map)).toList();
+        }
+      }
+      // Zaten List ise direkt kullan
+      else if (waypointsData is List) {
+        return waypointsData.map((w) => Map<String, dynamic>.from(w as Map)).toList();
+      }
+    } catch (e) {
+      print('⚠️ Waypoints parse hatası: $e');
+    }
+    
+    return null;
   }
 
   Map<String, dynamic> toMap() {
