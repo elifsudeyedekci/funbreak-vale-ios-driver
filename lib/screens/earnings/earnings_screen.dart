@@ -546,7 +546,7 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                         ),
                       ],
                     ),
-                  ),
+                  ), // ✅ COMMA EKLENDİ!
                 // BRÜT ÜCRET (final_price = taban + bekleme - indirim)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
