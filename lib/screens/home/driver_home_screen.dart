@@ -381,16 +381,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                       ),
                     ],
                   ),
-                  // ÇİZGİ (ALIŞ-VARIŞ ARASI)
-                  Container(
-                    margin: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
-                    width: 2,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.green.withOpacity(0.5), Colors.red.withOpacity(0.5)],
+                  // ÇİZGİ (ALIŞ-VARIŞ ARASI) - İCON MERKEZİNDE
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12), // Icon başlangıcı
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 11, top: 8, bottom: 8), // Icon merkezi (24/2 = 12, ama 1 px offset)
+                      width: 2,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.green.withOpacity(0.5), Colors.red.withOpacity(0.5)],
+                        ),
                       ),
                     ),
                   ),
@@ -1182,15 +1185,25 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                 final index = entry.key;
                 final waypoint = entry.value;
                 final address = waypoint['address'] ?? 'Ara Durak ${index + 1}';
-                final lat = waypoint['latitude'] ?? waypoint['lat'];
-                final lng = waypoint['longitude'] ?? waypoint['lng'];
+                
+                // Koordinatları farklı formatlardan al
+                dynamic lat, lng;
+                if (waypoint['location'] != null && waypoint['location'] is List && waypoint['location'].length >= 2) {
+                  // Format 1: location array [lat, lng]
+                  lat = waypoint['location'][0];
+                  lng = waypoint['location'][1];
+                } else {
+                  // Format 2: latitude/longitude veya lat/lng
+                  lat = waypoint['latitude'] ?? waypoint['lat'];
+                  lng = waypoint['longitude'] ?? waypoint['lng'];
+                }
                 
                 return Column(
                   children: [
-                    // ÇİZGİ (İLK SATIR DIŞINDA)
+                    // ÇİZGİ (İLK SATIR DIŞINDA) - CIRCLE MERKEZİNDE
                     if (index > 0)
                       Container(
-                        margin: const EdgeInsets.only(left: 12, bottom: 8),
+                        margin: const EdgeInsets.only(left: 23, bottom: 8), // Circle merkezi (24/2 = 12 + 12 margin = 24, ama 1 px offset = 23)
                         width: 2,
                         height: 16,
                         color: Colors.orange.withOpacity(0.5),
@@ -1198,11 +1211,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                     // TIKLANABİLİR ARA DURAK SATIRI
                     InkWell(
                       onTap: () {
+                        print('🗺️ Ara Durak #${index + 1} Tıklandı:');
+                        print('   Adres: $address');
+                        print('   Lat: $lat (Type: ${lat.runtimeType})');
+                        print('   Lng: $lng (Type: ${lng.runtimeType})');
+                        
                         if (lat != null && lng != null) {
                           _openNavigationToWaypoint(lat.toString(), lng.toString(), address);
                         } else {
+                          print('   ❌ Koordinatlar NULL!');
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('❌ Ara durak koordinatları bulunamadı')),
+                            const SnackBar(content: Text('❌ Ara durak koordinatları bulunamadı'), backgroundColor: Colors.red),
                           );
                         }
                       },
