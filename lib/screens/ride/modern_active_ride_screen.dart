@@ -3978,11 +3978,40 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         return [];
       }
       
+      print('🛣️ [AKTİF YOLCULUK] ${waypoints.length} ara durak bulundu');
+      
       // Waypoints widget listesi
       List<Widget> waypointWidgets = [];
       for (int i = 0; i < waypoints.length; i++) {
         final waypoint = waypoints[i];
-        final address = waypoint['address'] ?? waypoint['name'] ?? 'Ara Durak ${i + 1}';
+        
+        // Backend hem "address" hem "adres" gönderebilir!
+        final address = waypoint['address'] ?? waypoint['adres'] ?? waypoint['name'] ?? 'Ara Durak ${i + 1}';
+        
+        // Koordinatları farklı formatlardan al
+        dynamic lat, lng;
+        
+        print('🔍 [WAYPOINT #${i + 1}] RAW DATA: $waypoint');
+        
+        // Format 1: location/konum array [lat, lng] - Backend bu formatta gönderiyor!
+        dynamic locationArray = waypoint['location'] ?? waypoint['konum'];
+        
+        if (locationArray != null && locationArray is List && locationArray.length >= 2) {
+          lat = locationArray[0];
+          lng = locationArray[1];
+          print('   ✅ Format: location/konum array - Lat: $lat, Lng: $lng');
+        } else {
+          // Format 2: latitude/longitude veya lat/lng object keys
+          lat = waypoint['latitude'] ?? waypoint['lat'] ?? waypoint['enlem'];
+          lng = waypoint['longitude'] ?? waypoint['lng'] ?? waypoint['boylam'];
+          print('   ℹ️ Format: object keys - Lat: $lat, Lng: $lng');
+        }
+        
+        // Koordinatları double'a çevir
+        double? latDouble = lat is num ? lat.toDouble() : double.tryParse(lat?.toString() ?? '');
+        double? lngDouble = lng is num ? lng.toDouble() : double.tryParse(lng?.toString() ?? '');
+        
+        print('   🎯 FINAL: latDouble=$latDouble, lngDouble=$lngDouble');
         
         // Çizgi
         waypointWidgets.add(
@@ -3994,33 +4023,58 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           ),
         );
         
-        // Waypoint
+        // TIKLANABİLİR Waypoint - NAVİGASYON AÇILSIN!
         waypointWidgets.add(
-          Row(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '📍 $address',
-                  style: TextStyle(
-                    color: Colors.orange[300],
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
+          InkWell(
+            onTap: () {
+              print('🗺️ [WAYPOINT #${i + 1}] Tıklandı - Navigasyon açılıyor...');
+              print('   Adres: $address');
+              print('   LatDouble: $latDouble');
+              print('   LngDouble: $lngDouble');
+              
+              if (latDouble != null && lngDouble != null) {
+                _openNavigationToWaypoint(latDouble, lngDouble, address);
+              } else {
+                print('   ❌ Koordinatlar NULL veya PARSE EDİLEMEDİ!');
+                print('      Raw lat: $lat');
+                print('      Raw lng: $lng');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('❌ Ara durak koordinatları bulunamadı'),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 3),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                );
+              }
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '📍 $address',
+                    style: TextStyle(
+                      color: Colors.orange[300],
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                      decoration: TextDecoration.underline, // Tıklanabilir olduğunu göster
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.navigation, color: Colors.orange, size: 14),
+              ],
+            ),
           ),
         );
         
@@ -4030,8 +4084,46 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       return waypointWidgets;
       
     } catch (e) {
-      print('❌ Waypoints parse hatası: $e');
+      print('❌ [WAYPOINT] Parse hatası: $e');
       return [];
+    }
+  }
+  
+  // WAYPOINT NAVİGASYON FONKSİYONU
+  Future<void> _openNavigationToWaypoint(double lat, double lng, String address) async {
+    try {
+      print('🗺️ [WAYPOINT NAV] Açılıyor: $lat, $lng');
+      
+      // Yandex Maps URL (öncelikli)
+      final yandexUrl = 'yandexmaps://maps.yandex.com/?rtext=~$lat,$lng&rtt=auto';
+      final yandexUri = Uri.parse(yandexUrl);
+      
+      // Google Maps URL (yedek)
+      final googleUrl = 'google.navigation:q=$lat,$lng&mode=d';
+      final googleUri = Uri.parse(googleUrl);
+      
+      // Önce Yandex'i dene
+      if (await canLaunchUrl(yandexUri)) {
+        await launchUrl(yandexUri, mode: LaunchMode.externalApplication);
+        print('✅ [WAYPOINT NAV] Yandex Maps açıldı - $address');
+      } else if (await canLaunchUrl(googleUri)) {
+        // Yandex yoksa Google Maps aç
+        await launchUrl(googleUri, mode: LaunchMode.externalApplication);
+        print('✅ [WAYPOINT NAV] Google Maps açıldı - $address');
+      } else {
+        // Hiçbiri yoksa web'de aç
+        final webUrl = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
+        final webUri = Uri.parse(webUrl);
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+        print('✅ [WAYPOINT NAV] Web Maps açıldı - $address');
+      }
+    } catch (e) {
+      print('❌ [WAYPOINT NAV] Hata: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Navigasyon açılamadı: $e')),
+        );
+      }
     }
   }
   
