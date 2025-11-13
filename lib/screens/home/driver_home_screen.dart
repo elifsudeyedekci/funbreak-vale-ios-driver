@@ -143,6 +143,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
             'customer_id': data['customer_id'],
             'pickup_address': data['pickup_address'] ?? 'Alış konumu',
             'destination_address': data['destination_address'] ?? 'Varış konumu',
+            'pickup_lat': data['pickup_lat'], // 🗺️ KOORDİNATLAR EKLENDİ!
+            'pickup_lng': data['pickup_lng'],
+            'destination_lat': data['destination_lat'],
+            'destination_lng': data['destination_lng'],
+            'waypoints': data['waypoints'], // 🛣️ ARA DURAKLAR!
             'estimated_price': data['estimated_price']?.toString() ?? '0',
             'status': data['status'],
             'customer_name': data['customer_name'] ?? 'Müşteri',
@@ -475,6 +480,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
           'customer_phone': rideData['customer_phone'] ?? '',
           'pickup_address': rideData['pickup_address'] ?? '',
           'destination_address': rideData['destination_address'] ?? '',
+          'pickup_lat': rideData['pickup_lat'], // 🗺️ KOORDİNATLAR EKLENDİ!
+          'pickup_lng': rideData['pickup_lng'],
+          'destination_lat': rideData['destination_lat'],
+          'destination_lng': rideData['destination_lng'],
+          'waypoints': rideData['waypoints'], // 🛣️ ARA DURAKLAR!
           'estimated_price': rideData['estimated_price']?.toString() ?? '0',
           'status': 'accepted',
         };
