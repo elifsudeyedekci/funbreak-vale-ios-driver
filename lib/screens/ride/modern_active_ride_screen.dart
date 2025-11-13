@@ -1305,16 +1305,35 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             ),
           ),
           
-          // Çizgi
-          Container(
-            margin: const EdgeInsets.only(left: 5, top: 8, bottom: 8),
-            width: 2,
-            height: 20,
-            color: Colors.white.withOpacity(0.3),
-          ),
+          // ÇİZGİ - Waypoints varsa onlar kendi çizgilerini ekler
+          if ((widget.rideDetails['waypoints'] == null || widget.rideDetails['waypoints'].toString().isEmpty))
+            // Waypoint YOK - Direkt pickup'tan destination'a çizgi
+            Container(
+              margin: const EdgeInsets.only(left: 5, top: 8, bottom: 8),
+              width: 2,
+              height: 20,
+              color: Colors.white.withOpacity(0.3),
+            )
+          else
+            // Waypoint VAR - Pickup'tan ilk waypoint'e çizgi
+            Container(
+              margin: const EdgeInsets.only(left: 5, top: 8, bottom: 8),
+              width: 2,
+              height: 20,
+              color: Colors.green.withOpacity(0.5),
+            ),
           
           // ✅ ARA DURAKLAR (WAYPOINTS) - VARSA GÖSTER!
           ..._buildWaypoints(),
+          
+          // ÇİZGİ - Son waypoint'ten destination'a (waypoint varsa)
+          if (widget.rideDetails['waypoints'] != null && widget.rideDetails['waypoints'].toString().isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(left: 5, top: 0, bottom: 8),
+              width: 2,
+              height: 20,
+              color: Colors.red.withOpacity(0.5),
+            ),
           
           // Varış noktası - TIKLANABİLİR NAVİGASYON!
           InkWell(
@@ -4013,21 +4032,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         
         print('   🎯 FINAL: latDouble=$latDouble, lngDouble=$lngDouble');
         
-        // Çizgi
-        waypointWidgets.add(
-          Container(
-            margin: const EdgeInsets.only(left: 5, top: 0, bottom: 8),
-            width: 2,
-            height: 15,
-            color: Colors.orange.withOpacity(0.5),
-          ),
-        );
-        
         // TIKLANABİLİR Waypoint - NAVİGASYON AÇILSIN!
         waypointWidgets.add(
           InkWell(
             onTap: () {
-              print('🗺️ [WAYPOINT #${i + 1}] Tıklandı - Navigasyon açılıyor...');
+              print('🗺️ [WAYPOINT #${i + 1}] Tıklandı - Navigasyon dialog açılıyor...');
               print('   Adres: $address');
               print('   LatDouble: $latDouble');
               print('   LngDouble: $lngDouble');
@@ -4079,6 +4088,18 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         );
         
         waypointWidgets.add(const SizedBox(height: 8));
+        
+        // ÇİZGİ - WAYPOINT'İN ALTINA EKLE (son waypoint hariç)
+        if (i < waypoints.length - 1) {
+          waypointWidgets.add(
+            Container(
+              margin: const EdgeInsets.only(left: 5, top: 0, bottom: 8),
+              width: 2,
+              height: 15,
+              color: Colors.orange.withOpacity(0.5),
+            ),
+          );
+        }
       }
       
       return waypointWidgets;
@@ -4089,42 +4110,13 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     }
   }
   
-  // WAYPOINT NAVİGASYON FONKSİYONU
-  Future<void> _openNavigationToWaypoint(double lat, double lng, String address) async {
-    try {
-      print('🗺️ [WAYPOINT NAV] Açılıyor: $lat, $lng');
-      
-      // Yandex Maps URL (öncelikli)
-      final yandexUrl = 'yandexmaps://maps.yandex.com/?rtext=~$lat,$lng&rtt=auto';
-      final yandexUri = Uri.parse(yandexUrl);
-      
-      // Google Maps URL (yedek)
-      final googleUrl = 'google.navigation:q=$lat,$lng&mode=d';
-      final googleUri = Uri.parse(googleUrl);
-      
-      // Önce Yandex'i dene
-      if (await canLaunchUrl(yandexUri)) {
-        await launchUrl(yandexUri, mode: LaunchMode.externalApplication);
-        print('✅ [WAYPOINT NAV] Yandex Maps açıldı - $address');
-      } else if (await canLaunchUrl(googleUri)) {
-        // Yandex yoksa Google Maps aç
-        await launchUrl(googleUri, mode: LaunchMode.externalApplication);
-        print('✅ [WAYPOINT NAV] Google Maps açıldı - $address');
-      } else {
-        // Hiçbiri yoksa web'de aç
-        final webUrl = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng';
-        final webUri = Uri.parse(webUrl);
-        await launchUrl(webUri, mode: LaunchMode.externalApplication);
-        print('✅ [WAYPOINT NAV] Web Maps açıldı - $address');
-      }
-    } catch (e) {
-      print('❌ [WAYPOINT NAV] Hata: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Navigasyon açılamadı: $e')),
-        );
-      }
-    }
+  // WAYPOINT NAVİGASYON FONKSİYONU - ALIŞ/BIRAKAŞ GİBİ DİALOG İLE!
+  void _openNavigationToWaypoint(double lat, double lng, String address) {
+    print('🗺️ [WAYPOINT] Navigasyon dialog açılıyor: $address');
+    print('   Koordinatlar: $lat, $lng');
+    
+    // ✅ ALIŞ/BIRAKAŞ İLE AYNI DİALOG!
+    _openDirectNavigation(lat, lng, address);
   }
   
   // NAVİGASYON FONKSİYONLARI - ADRESLERE TIKLANABİLİR!
