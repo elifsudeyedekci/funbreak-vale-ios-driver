@@ -105,13 +105,23 @@ class AuthProvider with ChangeNotifier {
             );
             
             // Şoförü online yap
+            print('📍 LOGİN: update_driver_status çağrılıyor...');
             await _updateDriverStatus(true);
+            print('✅ LOGİN: update_driver_status tamamlandı');
             
             // Konum takibini başlat
+            print('📍 LOGİN: Location tracking başlatılıyor...');
             _locationService.startLocationTracking();
+            print('✅ LOGİN: Location tracking başladı');
             
             // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
-            await _updateFCMToken();
+            print('🔔🔔🔔 LOGİN: _updateFCMToken() ÇAĞ RILACAK! 🔔🔔🔔');
+            try {
+              await _updateFCMToken();
+              print('✅ LOGİN: _updateFCMToken() TAMAMLANDI!');
+            } catch (fcmError) {
+              print('❌❌❌ LOGİN: _updateFCMToken() EXCEPTION: $fcmError ❌❌❌');
+            }
             
             _isLoading = false;
             notifyListeners();
@@ -147,10 +157,18 @@ class AuthProvider with ChangeNotifier {
         );
         
         // Şoförü online yap
+        print('📍 TEST LOGİN: update_driver_status çağrılıyor...');
         await _updateDriverStatus(true);
+        print('✅ TEST LOGİN: update_driver_status tamamlandı');
         
         // ✅ TEST HESABI LOGİN - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
-        await _updateFCMToken();
+        print('🔔🔔🔔 TEST LOGİN: _updateFCMToken() ÇAĞRILACAK! 🔔🔔🔔');
+        try {
+          await _updateFCMToken();
+          print('✅ TEST LOGİN: _updateFCMToken() TAMAMLANDI!');
+        } catch (fcmError) {
+          print('❌❌❌ TEST LOGİN: _updateFCMToken() EXCEPTION: $fcmError ❌❌❌');
+        }
         
         _isLoading = false;
         notifyListeners();
@@ -315,6 +333,12 @@ class AuthProvider with ChangeNotifier {
           _userEmail = driverInfo['driver_email'];
           
           print('✅ Session geçerli - Otomatik giriş yapıldı: ${_driverName}');
+          
+          // ✅ AUTO-LOGIN SONRASI DA FCM TOKEN KAYDET!
+          print('🔔 AUTO-LOGIN: FCM Token kaydediliyor...');
+          await _updateFCMToken();
+          print('✅ AUTO-LOGIN: FCM Token işlemi tamamlandı');
+          
           notifyListeners();
         } else {
           print('❌ Driver bilgileri bulunamadı');

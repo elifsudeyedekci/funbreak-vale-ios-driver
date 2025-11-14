@@ -73,24 +73,22 @@ Future<void> _driverFirebaseBackgroundHandler(RemoteMessage message) async {
   _ensureBackgroundSharedPrefsRegistered();
 
   try {
-    // Firebase'i başlat - duplicate safe (iOS'te AppDelegate tarafından yapıldı)
-    if (Platform.isAndroid) {
+    // ✅ Firebase'i başlat - HEM ANDROID HEM iOS!
     try {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
-          print('🔥 Firebase background handler için başlatıldı (Android)');
+        print('🔥 Firebase başlatıldı: ${Platform.isIOS ? "iOS" : "Android"}');
       } else {
-        print('🔥 Firebase zaten başlatılmış - background handler ready!');
+        print('🔥 Firebase zaten başlatılmış - OK!');
       }
     } catch (e) {
       // Duplicate app hatası normalize - çalışmaya devam et
       if (e.toString().contains('duplicate-app')) {
-        print('🔥 Firebase already initialized - background handler working!');
+        print('🔥 Firebase already initialized - OK!');
       } else {
-        print('❌ Firebase background init error: $e');
-        }
+        print('❌ Firebase init error: $e');
       }
     }
     
@@ -203,6 +201,21 @@ void main() async {
     print('⚠️ ŞOFÖR Firebase init hatası (duplicate normal): $e');
   }
   
+  // ✅ TEST: Firebase başladı mı, token alınabiliyor mu?
+  print('🧪 TEST: Firebase Messaging test ediliyor...');
+  try {
+    final testToken = await FirebaseMessaging.instance.getToken().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        print('⏱️ TEST: Token timeout!');
+        return null;
+      },
+    );
+    print('✅ TEST: Token result = ${testToken != null ? testToken.substring(0, 20) + "..." : "NULL"}');
+  } catch (testError) {
+    print('❌ TEST: getToken() exception: $testError');
+  }
+  
   // GELİŞMİŞ SÜRÜCÜ BİLDİRİM SERVİSİ BAŞLAT!
   print('🔥 [ŞOFÖR] AdvancedNotificationService başlatılıyor...');
   try {
@@ -214,6 +227,25 @@ void main() async {
   }
   
   await requestPermissions();
+  
+  // ✅ FCM TOKEN'I ANA UYGULAMADA AL VE KAYDET - LOGIN'DEN BAĞIMSIZ!
+  print('🔔 MAIN: FCM Token sistemi başlatılıyor...');
+  
+  // Token alma ve kaydetme - ASYNC olmadan başlat (uygulama açılışını bloklamaması için)
+  Future.delayed(Duration(seconds: 2), () async {
+    try {
+      print('📱 MAIN: FCM Token alınıyor...');
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        print('✅ MAIN: FCM Token alındı - ${token.substring(0, 20)}...');
+        await _saveFCMTokenToDatabase(token);
+      } else {
+        print('⚠️ MAIN: FCM Token null veya boş');
+      }
+    } catch (e) {
+      print('❌ MAIN: FCM Token alma hatası: $e');
+    }
+  });
   
   // Session servisini başlat
   await SessionService.initializeSession();
@@ -1821,18 +1853,28 @@ String _formatScheduledTimeForDriver(String? scheduledTime) {
 // FCM TOKEN'I DATABASE'E KAYDET!
 Future<void> _saveFCMTokenToDatabase(String fcmToken) async {
   try {
-    print('💾 FCM Token database\'e kaydediliyor...');
+    print('💾 💾 💾 MAIN.DART: FCM Token database\'e kaydediliyor...');
 
     final prefs = await SharedPreferences.getInstance();
-    final driverId = prefs.getString('admin_user_id');
+    
+    // ✅ TÜMKEY'LERİ KONTROL ET!
+    print('🔍 MAIN.DART FCM: admin_user_id = ${prefs.getString('admin_user_id')}');
+    print('🔍 MAIN.DART FCM: driver_id = ${prefs.getString('driver_id')}');
+    print('🔍 MAIN.DART FCM: user_id = ${prefs.getString('user_id')}');
+    
+    final driverId = prefs.getString('admin_user_id') ?? 
+                     prefs.getString('driver_id') ?? 
+                     prefs.getString('user_id');
 
-    if (driverId == null) {
-      print('❌ Driver ID bulunamadı - FCM token kaydedilemedi');
+    if (driverId == null || driverId.isEmpty) {
+      print('❌ MAIN.DART: Driver ID HİÇBİR KEY'DE BULUNAMADI - FCM token kaydedilemedi');
+      print('   🔍 Tüm keys: ${prefs.getKeys()}');
       return;
     }
 
-    print('🔍 FCM Token Kaydetme - Driver ID: $driverId');
-    print('📱 Token: ${fcmToken.substring(0, 20)}...');
+    print('✅ MAIN.DART: Driver ID BULUNDU: $driverId');
+    print('🔍 MAIN.DART: FCM Token Kaydetme - Driver ID: $driverId');
+    print('📱 MAIN.DART: Token: ${fcmToken.substring(0, 20)}...');
 
     final response = await http.post(
       Uri.parse('https://admin.funbreakvale.com/api/update_fcm_token.php'),
