@@ -313,15 +313,27 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Session yükleme
+  // Session yükleme - TAMAMEN GÜVENLİ!
   Future<void> loadSavedSession() async {
+    print('🔍 loadSavedSession() BAŞLADI');
+    
     try {
       // SessionService ile session kontrolü yap
-      final isSessionValid = await SessionService.isSessionValid();
+      print('🔍 SessionService.isSessionValid() çağrılıyor...');
+      final isSessionValid = await SessionService.isSessionValid().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('⏱️ isSessionValid() TIMEOUT!');
+          return false;
+        },
+      );
+      print('✅ isSessionValid() tamamlandı: $isSessionValid');
       
       if (isSessionValid) {
+        print('🔍 SessionService.getDriverInfo() çağrılıyor...');
         // Session geçerli ise SessionService'ten driver bilgilerini yükle
         final driverInfo = await SessionService.getDriverInfo();
+        print('✅ getDriverInfo() tamamlandı: ${driverInfo != null}');
         
         if (driverInfo != null) {
           _isAuthenticated = true;
@@ -332,29 +344,38 @@ class AuthProvider with ChangeNotifier {
           // EMAIL'İ SESSION SERVICE'TEN ÇEK - SORUN ÇÖZÜLDİ!
           _userEmail = driverInfo['driver_email'];
           
-          print('✅ Session geçerli - Otomatik giriş yapıldı: ${_driverName}');
+          print('✅✅✅ Session geçerli - Otomatik giriş yapıldı: ${_driverName}');
           
-          // ✅ AUTO-LOGIN SONRASI DA FCM TOKEN KAYDET!
-          print('🔔 AUTO-LOGIN: FCM Token kaydediliyor...');
-          await _updateFCMToken();
-          print('✅ AUTO-LOGIN: FCM Token işlemi tamamlandı');
+          // ✅ AUTO-LOGIN SONRASI FCM - ASYNC OLARAK (BLOKLAMASIN!)
+          print('🔔 AUTO-LOGIN: FCM Token arka planda kaydedilecek...');
+          Future.delayed(const Duration(seconds: 1), () async {
+            try {
+              await _updateFCMToken();
+              print('✅ AUTO-LOGIN: FCM Token başarıyla kaydedildi');
+            } catch (fcmError) {
+              print('❌ AUTO-LOGIN: FCM hatası: $fcmError');
+            }
+          });
           
           notifyListeners();
         } else {
-          print('❌ Driver bilgileri bulunamadı');
+          print('❌ Driver bilgileri NULL');
           _isAuthenticated = false;
           notifyListeners();
         }
       } else {
-        print('❌ Session geçersiz - Giriş yapılması gerekiyor');
+        print('⚠️ Session GEÇERSIZ veya YOK');
         _isAuthenticated = false;
         notifyListeners();
       }
-    } catch (e) {
-      print('Session yükleme hatası: $e');
+    } catch (sessionError) {
+      print('❌❌❌ loadSavedSession() EXCEPTION: $sessionError ❌❌❌');
+      print('❌ Exception Type: ${sessionError.runtimeType}');
       _isAuthenticated = false;
       notifyListeners();
     }
+    
+    print('🏁 loadSavedSession() TAMAMLANDI - authenticated: $_isAuthenticated');
   }
 
   // Auth durumunu kontrol et
