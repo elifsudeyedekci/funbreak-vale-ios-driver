@@ -313,69 +313,42 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Session yükleme - TAMAMEN GÜVENLİ!
+  // Session yükleme - FCM YOK (main.dart halleder!)
   Future<void> loadSavedSession() async {
-    print('🔍 loadSavedSession() BAŞLADI');
-    
     try {
       // SessionService ile session kontrolü yap
-      print('🔍 SessionService.isSessionValid() çağrılıyor...');
-      final isSessionValid = await SessionService.isSessionValid().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          print('⏱️ isSessionValid() TIMEOUT!');
-          return false;
-        },
-      );
-      print('✅ isSessionValid() tamamlandı: $isSessionValid');
+      final isSessionValid = await SessionService.isSessionValid();
       
       if (isSessionValid) {
-        print('🔍 SessionService.getDriverInfo() çağrılıyor...');
         // Session geçerli ise SessionService'ten driver bilgilerini yükle
         final driverInfo = await SessionService.getDriverInfo();
-        print('✅ getDriverInfo() tamamlandı: ${driverInfo != null}');
         
         if (driverInfo != null) {
           _isAuthenticated = true;
           _driverId = driverInfo['driver_id'];
           _driverName = driverInfo['driver_name'];
           _driverPhone = driverInfo['driver_phone'];
-          
-          // EMAIL'İ SESSION SERVICE'TEN ÇEK - SORUN ÇÖZÜLDİ!
           _userEmail = driverInfo['driver_email'];
           
-          print('✅✅✅ Session geçerli - Otomatik giriş yapıldı: ${_driverName}');
+          print('✅ Session geçerli - Otomatik giriş yapıldı: ${_driverName}');
           
-          // ✅ AUTO-LOGIN SONRASI FCM - ASYNC OLARAK (BLOKLAMASIN!)
-          print('🔔 AUTO-LOGIN: FCM Token arka planda kaydedilecek...');
-          Future.delayed(const Duration(seconds: 1), () async {
-            try {
-              await _updateFCMToken();
-              print('✅ AUTO-LOGIN: FCM Token başarıyla kaydedildi');
-            } catch (fcmError) {
-              print('❌ AUTO-LOGIN: FCM hatası: $fcmError');
-            }
-          });
-          
+          // ✅ FCM main.dart'ta çalışacak - burada uğraşma!
           notifyListeners();
         } else {
-          print('❌ Driver bilgileri NULL');
+          print('❌ Driver bilgileri bulunamadı');
           _isAuthenticated = false;
           notifyListeners();
         }
       } else {
-        print('⚠️ Session GEÇERSIZ veya YOK');
+        print('❌ Session geçersiz - Giriş yapılması gerekiyor');
         _isAuthenticated = false;
         notifyListeners();
       }
-    } catch (sessionError) {
-      print('❌❌❌ loadSavedSession() EXCEPTION: $sessionError ❌❌❌');
-      print('❌ Exception Type: ${sessionError.runtimeType}');
+    } catch (e) {
+      print('Session yükleme hatası: $e');
       _isAuthenticated = false;
       notifyListeners();
     }
-    
-    print('🏁 loadSavedSession() TAMAMLANDI - authenticated: $_isAuthenticated');
   }
 
   // Auth durumunu kontrol et
