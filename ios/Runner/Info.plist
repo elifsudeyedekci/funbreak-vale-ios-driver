@@ -76,6 +76,10 @@
 	<key>NSContactsUsageDescription</key>
 	<string>Vale ile iletişim için telefon erişimi gerekiyor.</string>
 	
+	<!-- ⚠️ BİLDİRİM İZNİ - PUSH NOTIFICATION İÇİN ZORUNLU! -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Yeni yolculuk talepleri, müşteri mesajları ve önemli bildirimler için bildirim izni gerekiyor. Talep geldiğinde anında haberdar olmanız önemlidir.</string>
+	
 	<!-- ⚠️ ARKA PLAN MODLARı - KONUM + BİLDİRİM + FETCH -->
 	<key>UIBackgroundModes</key>
 	<array>

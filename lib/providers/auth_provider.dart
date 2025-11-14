@@ -617,12 +617,13 @@ class AuthProvider with ChangeNotifier {
       
       // Backend'e gönder
       try {
-        debugPrint('🌐 iOS VALE: HTTP POST başlatılıyor (update_driver_status.php)...');
+        debugPrint('🌐 iOS VALE: HTTP POST başlatılıyor (update_fcm_token.php)...');
         final response = await http.post(
-          Uri.parse('https://admin.funbreakvale.com/api/update_driver_status.php'),
+          Uri.parse('https://admin.funbreakvale.com/api/update_fcm_token.php'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'driver_id': driverId,
+            'user_type': 'driver',
             'fcm_token': fcmToken,
           }),
         ).timeout(const Duration(seconds: 10));
