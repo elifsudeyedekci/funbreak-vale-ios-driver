@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io'; // ✅ Platform.isIOS için gerekli!
 import 'package:http/http.dart' as http;
 import '../services/location_service.dart';
 import '../services/session_service.dart';
