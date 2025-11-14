@@ -12,6 +12,7 @@ class LocationTrackingService {
   static StreamSubscription<Position>? _positionStream;
   static bool _isTracking = false;
   static Position? _lastKnownPosition;
+  static DateTime? _lastStreamTime; // ← Stream son güncelleme zamanı (duplicate önleme)
   
   // Konum takibini başlat
   static Future<bool> startLocationTracking() async {
@@ -44,9 +45,9 @@ class LocationTrackingService {
         // ✅ ANDROID - Foreground Service ile arka plan
         locationSettings = AndroidSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 0, // ✅ 0 = HER GÜNCELLEME GÖNDERİLSİN! (Backend filtreler)
+          distanceFilter: 5, // ✅ 5m altı filtrelenir (duplicate önleme, backend 3m filtreler)
           forceLocationManager: false,
-          intervalDuration: Duration(seconds: 2), // ✅ Her 2 saniye (daha hızlı!)
+          intervalDuration: Duration(seconds: 3), // ✅ Her 3 saniye (optimize)
           foregroundNotificationConfig: ForegroundNotificationConfig(
             notificationText: "Yolculuk takibi devam ediyor",
             notificationTitle: "FunBreak Vale - Konum Aktif",
@@ -59,7 +60,7 @@ class LocationTrackingService {
         locationSettings = AppleSettings(
           accuracy: LocationAccuracy.high,
           activityType: ActivityType.automotiveNavigation, // Araç navigasyon
-          distanceFilter: 0, // ✅ 0 = HER GÜNCELLEME GÖNDERİLSİN!
+          distanceFilter: 5, // ✅ 5m altı filtrelenir (duplicate önleme)
           pauseLocationUpdatesAutomatically: false, // ✅ Otomatik DURAKLATMA YOK!
           showBackgroundLocationIndicator: true, // iOS arka plan çubuğu
           allowBackgroundLocationUpdates: true, // ✅ ARKA PLAN KRİTİK!
@@ -68,7 +69,7 @@ class LocationTrackingService {
         // Fallback - Generic settings
         locationSettings = LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 0,
+          distanceFilter: 5,
           timeLimit: Duration(minutes: 30),
         );
       }
@@ -77,23 +78,25 @@ class LocationTrackingService {
         locationSettings: locationSettings,
       ).listen((Position position) {
         _lastKnownPosition = position;
+        _lastStreamTime = DateTime.now(); // ← SON STREAM ZAMANI KAYDET (duplicate önleme)
         _sendLocationToServer(driverId, position);
         print('📍 STREAM KONUM: ${position.latitude}, ${position.longitude}, Accuracy: ${position.accuracy}m');
       });
       
-      // ✅ Periyodik güncelleme timer'ı (2 saniyede bir - DAHA HIZLI!)
-      _locationTimer = Timer.periodic(Duration(seconds: 2), (timer) async {
-        if (_lastKnownPosition != null) {
-          await _sendLocationToServer(driverId, _lastKnownPosition!);
-        } else {
-          // Stream'den gelmemişse manuel çek
+      // ✅ Fallback timer (10 saniyede bir - SADECE stream gelmezse)
+      _locationTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
+        // SADECE stream 10 saniyedir gelmedi ise manuel çek (duplicate önleme)
+        if (_lastStreamTime == null || 
+            DateTime.now().difference(_lastStreamTime!) > Duration(seconds: 10)) {
           try {
             Position position = await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.high,
               timeLimit: Duration(seconds: 5),
             );
             _lastKnownPosition = position;
+            _lastStreamTime = DateTime.now();
             await _sendLocationToServer(driverId, position);
+            print('⚠️ FALLBACK: Stream 10s gelmedi, manuel konum çekildi');
           } catch (e) {
             print('⚠️ Manuel konum çekme hatası: $e');
           }
@@ -121,6 +124,7 @@ class LocationTrackingService {
       
       _isTracking = false;
       _lastKnownPosition = null;
+      _lastStreamTime = null; // ← Stream time'ı da temizle
       
       print('Konum takibi durduruldu');
     } catch (e) {

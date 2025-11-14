@@ -2653,11 +2653,48 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       final customerId = widget.rideDetails['customer_id']?.toString() ?? '0';
       final customerPhone = widget.rideDetails['customer_phone'] ?? '';
       
+      // Müşteriye bildirim göster
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                strokeWidth: 2,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '📞 Köprü sistemi aktif',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text('Destek: $supportPhone çağrılıyor...'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.blue,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      
       // Destek hattını ara (köprü sistemi)
       await _executePhoneCall(
         supportPhone,
-        onDial: () => print('Köprü arandı'),
+        onDial: () => _logBridgeInfo(supportPhone, customerPhone: customerPhone),
       );
+      
+      print('🌉 KÖPRÜ SİSTEMİ:');
+      print('   📞 Destek Hat: $supportPhone');
+      print('   🆔 Ride ID: $rideId');
+      print('   👤 Customer ID: $customerId');
+      print('   📱 Customer Phone: $customerPhone');
       
     } catch (e) {
       print('❌ [ŞOFÖR] Köprü sistemi hatası: $e');
