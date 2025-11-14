@@ -23,6 +23,29 @@ class AuthProvider with ChangeNotifier {
   String? _driverPhone;
   String? _driverPhotoUrl;
   
+  // ✅ iOS DEBUG LOG - BACKEND'E GÖNDER!
+  Future<void> _logToBackend(String message, {String level = 'INFO'}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final driverId = prefs.getString('admin_user_id') ?? prefs.getString('driver_id') ?? 'UNKNOWN';
+      
+      await http.post(
+        Uri.parse('https://admin.funbreakvale.com/api/log_ios_debug.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'app_name': 'VALE',
+          'log_level': level,
+          'message': message,
+          'driver_id': driverId,
+          'customer_id': '',
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      ).timeout(const Duration(seconds: 2));
+    } catch (e) {
+      // Sessiz başarısız - log gönderme hatası ana işlemi durdurmasın!
+    }
+  }
+  
   // ÇEVRİMİÇİ DURUM YÖNETİMİ - EKSİK FONKSİYON!
   bool _isOnline = false;
   bool _isAvailable = true;
@@ -570,11 +593,12 @@ class AuthProvider with ChangeNotifier {
   // ✅ FCM TOKEN GÜNCELLEME - LOGIN SONRASI OTOMATIK ÇAĞRILIR!
   Future<void> _updateFCMToken() async {
     print('🔔🔔🔔 iOS VALE (ŞOFÖR): _updateFCMToken() BAŞLADI! 🔔🔔🔔');
-    print('📍 STACK TRACE: ${StackTrace.current}');
+    await _logToBackend('🔔 FCM _updateFCMToken BAŞLADI');
     
     try {
       print('🔔 ŞOFÖR: FCM Token güncelleme başlatılıyor...');
       print('📱 iOS VERSION CHECK: ${Platform.isIOS ? "iOS" : "Android"}');
+      await _logToBackend('iOS VERSION: ${Platform.isIOS ? "iOS" : "Android"}');
       
       final prefs = await SharedPreferences.getInstance();
       
@@ -588,13 +612,16 @@ class AuthProvider with ChangeNotifier {
       final driverId = prefs.getString('admin_user_id') ?? prefs.getString('driver_id');
       
       print('🔍 iOS VALE FCM: Final driverId = $driverId');
+      await _logToBackend('FCM driverId = $driverId');
       
       if (driverId == null || driverId.isEmpty) {
         print('❌❌❌ iOS VALE: Driver ID NULL - RETURN EDİYOR! ❌❌❌');
+        await _logToBackend('❌ FCM DRIVER ID NULL!', level: 'ERROR');
         return;
       }
       
       print('✅ iOS VALE: Driver ID BULUNDU: $driverId - Devam ediliyor...');
+      await _logToBackend('✅ FCM Driver ID bulundu: $driverId');
       
       // FCM Token al (iOS için önce izin!)
       print('📱 iOS VALE: FirebaseMessaging instance alınıyor...');
@@ -631,15 +658,19 @@ class AuthProvider with ChangeNotifier {
       
       if (fcmToken == null || fcmToken.isEmpty) {
         print('⚠️ ŞOFÖR: FCM Token alınamadı - APNs kontrol et!');
+        await _logToBackend('❌ FCM Token NULL!', level: 'ERROR');
         return;
       }
       
       print('✅ ŞOFÖR: FCM Token alındı: ${fcmToken.substring(0, 20)}...');
       print('📤 iOS VALE: Backend\'e gönderiliyor - Driver ID: $driverId');
+      await _logToBackend('✅ FCM Token alındı: ${fcmToken.substring(0, 20)}...');
       
       // Backend'e gönder
       try {
         print('🌐 iOS VALE: HTTP POST başlatılıyor (update_fcm_token.php)...');
+        await _logToBackend('FCM HTTP POST başlatıldı');
+        
         final response = await http.post(
           Uri.parse('https://admin.funbreakvale.com/api/update_fcm_token.php'),
           headers: {'Content-Type': 'application/json'},
@@ -651,14 +682,17 @@ class AuthProvider with ChangeNotifier {
         ).timeout(const Duration(seconds: 10));
         
         print('📥 iOS VALE: HTTP Response alındı - Status: ${response.statusCode}');
+        await _logToBackend('FCM API Response: ${response.statusCode}');
         
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
           print('✅✅✅ iOS VALE: FCM Token backend\'e kaydedildi! ✅✅✅');
           print('🔍 iOS VALE FCM: Backend response = $responseData');
+          await _logToBackend('✅✅✅ FCM BAŞARILI: $responseData', level: 'SUCCESS');
         } else {
           print('⚠️⚠️ iOS VALE: FCM Token backend kayıt hatası: ${response.statusCode} ⚠️⚠️');
           print('🔍 iOS VALE FCM: Response body = ${response.body}');
+          await _logToBackend('❌ FCM API ERROR: ${response.statusCode} - ${response.body}', level: 'ERROR');
         }
       } catch (httpError) {
         print('❌❌ iOS VALE: HTTP REQUEST HATASI: $httpError ❌❌');
@@ -667,23 +701,7 @@ class AuthProvider with ChangeNotifier {
     } catch (e, stackTrace) {
       print('❌❌❌ iOS VALE: FCM Token güncelleme EXCEPTION: $e ❌❌❌');
       print('❌ Exception Type: ${e.runtimeType}');
-      print('❌ Stack trace: $stackTrace');
-      
-      // Backend'e hata log gönder
-      try {
-        await http.post(
-          Uri.parse('https://admin.funbreakvale.com/api/log_client_error.php'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'error_type': 'iOS_VALE_FCM_EXCEPTION',
-            'error_message': e.toString(),
-            'stack_trace': stackTrace.toString(),
-            'timestamp': DateTime.now().toIso8601String(),
-          }),
-        ).timeout(const Duration(seconds: 5));
-      } catch (logError) {
-        print('❌ Error log gönderilemedi: $logError');
-      }
+      await _logToBackend('❌❌❌ FCM EXCEPTION: $e (Type: ${e.runtimeType})', level: 'ERROR');
       
       // Exception'ı yeniden fırlat ki görelim!
       rethrow;
