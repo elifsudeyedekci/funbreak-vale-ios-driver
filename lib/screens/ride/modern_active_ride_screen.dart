@@ -4440,30 +4440,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     return _initialEstimatedPrice.toStringAsFixed(0);
   }
 
-  // ✅ GÜNCEL TUTAR (DİNAMİK - Backend estimated_price + Bekleme)
+  // ✅ GÜNCEL TUTAR (DİNAMİK - _calculatedTotalPrice her 2s güncelleniyor!)
   String _calculateDriverCurrentTotal() {
-    // Backend'den gelen estimated_price kullan (backend zaten distance_pricing SABİT fiyatı hesaplıyor!)
-    final backendPrice = _currentRideStatus['estimated_price'] ?? 
-                         widget.rideDetails['estimated_price'] ?? 0.0;
-    final basePrice = double.tryParse(backendPrice.toString()) ?? 0.0;
-    
-    // Bekleme ücreti ekle (eğer varsa)
-    final waitingMinutes = _waitingMinutes;
-    double waitingFee = 0.0;
-    
-    if (waitingMinutes > 0) {
-      final freeMinutes = _currentRideStatus['waiting_free_minutes'] ?? 15;
-      final feePerInterval = double.tryParse((_currentRideStatus['waiting_fee_per_interval'] ?? 200).toString()) ?? 200.0;
-      final intervalMinutes = _currentRideStatus['waiting_interval_minutes'] ?? 15;
-      
-      if (waitingMinutes > freeMinutes) {
-        final chargeableMinutes = waitingMinutes - freeMinutes;
-        final intervals = (chargeableMinutes / intervalMinutes).ceil();
-        waitingFee = intervals * feePerInterval;
-      }
-    }
-    
-    final total = basePrice + waitingFee;
-    return total.toStringAsFixed(0);
+    // ✅ _calculatedTotalPrice direkt kullan (zaten distance_pricing SABİT + bekleme dahil!)
+    // _calculateEarningsFromPanel() her 2 saniyede distance_pricing ile hesaplıyor
+    return _calculatedTotalPrice.toStringAsFixed(0);
   }
 }
