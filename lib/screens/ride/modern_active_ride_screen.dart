@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart'; // ✅ BEKLEME KONUM İÇİN!
 import '../../services/ride_persistence_service.dart';
 import '../messaging/ride_messaging_screen.dart';
 import '../../services/company_contact_service.dart'; // ŞİRKET ARAMA SERVİSİ!
@@ -1948,6 +1949,26 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       _isWaitingActive = true;
     });
     
+    // ✅ KRİTİK: GERÇEK KONUM AL (Geolocator'dan)
+    double driverLat = 0.0;
+    double driverLng = 0.0;
+    
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+      driverLat = position.latitude;
+      driverLng = position.longitude;
+      print('📍 BEKLEME: Gerçek konum alındı - ($driverLat, $driverLng)');
+    } catch (e) {
+      print('⚠️ BEKLEME: Konum alınamadı, fallback kullanılıyor: $e');
+      // Fallback: Pickup koordinatları kullan
+      driverLat = double.tryParse(widget.rideDetails['pickup_lat']?.toString() ?? '') ?? 0.0;
+      driverLng = double.tryParse(widget.rideDetails['pickup_lng']?.toString() ?? '') ?? 0.0;
+      print('📍 BEKLEME: Fallback konum - pickup ($driverLat, $driverLng)');
+    }
+    
     // BACKEND'E BEKLEME BAŞLATILDIĞINI BİLDİR!
     try {
       final rideId = widget.rideDetails['ride_id']?.toString() ?? '0';
@@ -1959,11 +1980,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           'waiting_started': true, // BEKLEME BAŞLATILDI!
           'waiting_minutes': _waitingMinutes,
           'current_km': 0,
-          'driver_lat': _driverLocation?.latitude ?? 0.0, // ✅ GERÇEK KONUM!
-          'driver_lng': _driverLocation?.longitude ?? 0.0, // ✅ GERÇEK KONUM!
+          'driver_lat': driverLat, // ✅ GERÇEK KONUM!
+          'driver_lng': driverLng, // ✅ GERÇEK KONUM!
         }),
       ).timeout(const Duration(seconds: 10));
-      print('⏰ ŞOFÖR: Backend\'e bekleme BAŞLATILDI bildirimi gönderildi');
+      print('⏰ ŞOFÖR: Backend\'e bekleme BAŞLATILDI bildirimi gönderildi (Konum: $driverLat, $driverLng)');
     } catch (e) {
       print('⚠️ ŞOFÖR: Bekleme başlatma bildirimi hatası: $e');
     }
