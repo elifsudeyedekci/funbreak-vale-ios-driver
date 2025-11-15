@@ -579,9 +579,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       
       await _updateRideStatus();
       
-      // Real-time tracking (her 5 saniye) + PERSISTENCE + REAL-TIME DATA AKTARIMI + İPTAL KONTROLÜ!
-      _trackingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-        _updateRideStatus();
+      // Real-time tracking (her 2 saniye - ARA DURAK ANINDA GELSİN!) + PERSISTENCE + REAL-TIME DATA + İPTAL!
+      _trackingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+        _updateRideStatus(); // Ara durak dahil her 2 saniyede güncellenir
         _saveToPersistence(); // SÜREKLI KAYDET!
         _checkRideCancellation(); // İPTAL KONTROLÜ EKLE!
         if (_isRideStarted) {
