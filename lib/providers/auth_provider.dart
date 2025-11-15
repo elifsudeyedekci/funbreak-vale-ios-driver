@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io'; // ✅ Platform.isIOS için gerekli!
+import 'dart:math'; // ✅ Random için!
 import 'package:http/http.dart' as http;
 import '../services/location_service.dart';
 import '../services/session_service.dart';
@@ -22,6 +23,18 @@ class AuthProvider with ChangeNotifier {
   String? _driverName;
   String? _driverPhone;
   String? _driverPhotoUrl;
+  String? _deviceId;
+  
+  Future<String> _getOrCreateDeviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? deviceId = prefs.getString('device_id');
+    if (deviceId == null || deviceId.isEmpty) {
+      deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
+      await prefs.setString('device_id', deviceId);
+    }
+    _deviceId = deviceId;
+    return deviceId;
+  }
   
   // ✅ iOS DEBUG LOG - BACKEND'E GÖNDER!
   Future<void> _logToBackend(String message, {String level = 'INFO'}) async {
@@ -86,6 +99,8 @@ class AuthProvider with ChangeNotifier {
       _isLoading = true;
       _error = null;
       notifyListeners();
+      
+      final deviceId = await _getOrCreateDeviceId();
 
       // Test kullanıcıları ve panelden eklenen şoförler için API kontrolü
       try {
