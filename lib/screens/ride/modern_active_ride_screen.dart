@@ -315,7 +315,7 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   // PANEL FİYATLARIYLA KAZANÇ HESAPLAMA
   Future<void> _calculateEarningsFromPanel() async {
     try {
-      // Panel'den fiyat bilgilerini çek
+      // Panel'den fiyat bilgilerini çek (distance_pricing + sistem ayarları)
       final response = await http.get(
         Uri.parse('https://admin.funbreakvale.com/api/get_pricing_info.php?ts=${DateTime.now().millisecondsSinceEpoch}'),
       ).timeout(const Duration(seconds: 10));
@@ -329,6 +329,15 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           // Panel'den gelen fiyatlar + BEKLEME AYARLARI
           final basePrice = double.tryParse(pricing['base_price']?.toString() ?? '0') ?? 50.0;
           final kmPrice = double.tryParse(pricing['km_price']?.toString() ?? '0') ?? 8.0;
+          
+          // ✅ DISTANCE_PRICING ARALIK FİYATLARI (SABİT FİYAT SİSTEMİ!)
+          List<Map<String, dynamic>> distancePricingRanges = [];
+          if (data['distance_pricing'] != null && data['distance_pricing'] is List) {
+            distancePricingRanges = List<Map<String, dynamic>>.from(data['distance_pricing']);
+            print('✅ ŞOFÖR: ${distancePricingRanges.length} adet distance_pricing aralığı yüklendi');
+          } else {
+            print('⚠️ ŞOFÖR: distance_pricing yok, varsayılan KM fiyatı kullanılacak');
+          }
           
           // ✅ BEKLEME AYARLARINI LOCAL DEĞİŞKENE AL (setState içinde güncellenecek!)
           final waitingFreeMinutes = int.tryParse(pricing['waiting_fee_free_minutes']?.toString() ?? '15') ?? 15;
@@ -362,11 +371,33 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           baseAndDistanceGross = estimatedPriceFromRide;
           print('💰 ŞOFÖR: Estimated price kullanılıyor: ₺${estimatedPriceFromRide.toStringAsFixed(2)}');
         } else {
-          // YOLCULUK DEVAM EDİYOR: KM bazlı hesaplama
-          final kmComponent = currentKm * kmPrice;
-          baseAndDistanceGross = basePrice + kmComponent;
+          // ✅ YOLCULUK DEVAM EDİYOR: distance_pricing SABİT FİYAT SİSTEMİ!
+          double distancePrice = currentKm * kmPrice; // Varsayılan (KM başına)
+          
+          // distance_pricing aralıklarından uygun aralığı bul
+          bool rangeFound = false;
+          if (distancePricingRanges.isNotEmpty) {
+            for (var range in distancePricingRanges) {
+              final minKm = double.tryParse(range['min_km']?.toString() ?? '0') ?? 0.0;
+              final maxKm = double.tryParse(range['max_km']?.toString() ?? '0') ?? 0.0;
+              final rangePrice = double.tryParse(range['price']?.toString() ?? '0') ?? 0.0;
+              
+              if (currentKm >= minKm && currentKm <= maxKm && rangePrice > 0) {
+                distancePrice = rangePrice; // ✅ SABİT FİYAT (çarpmıyoruz!)
+                rangeFound = true;
+                print('📏 ŞOFÖR KM ARALIK: ${currentKm}km → $minKm-${maxKm}km aralığı → ₺${rangePrice} (SABİT)');
+                break;
+              }
+            }
+          }
+          
+          if (!rangeFound) {
+            print('⚠️ ŞOFÖR: Aralık bulunamadı, varsayılan hesaplama: ${currentKm}km × ₺${kmPrice} = ₺${distancePrice.toStringAsFixed(2)}');
+          }
+          
+          baseAndDistanceGross = distancePrice; // ✅ Artık SABİT fiyat veya varsayılan
           totalPrice = baseAndDistanceGross;
-          print('💰 ŞOFÖR: KM bazlı hesaplama: Base ₺$basePrice + KM (${currentKm}km × ₺$kmPrice) = ₺${totalPrice.toStringAsFixed(2)}');
+          print('💰 ŞOFÖR: Toplam mesafe fiyatı: ₺${totalPrice.toStringAsFixed(2)}');
         }
 
         // ✅ SAATLİK PAKET KONTROLÜ ÖNCE YAPILMALI!
