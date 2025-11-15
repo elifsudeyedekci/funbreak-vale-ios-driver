@@ -152,6 +152,18 @@ class AuthProvider with ChangeNotifier {
             _locationService.startLocationTracking();
             print('✅ LOGİN: Location tracking başladı');
             
+            // ✅ ÇOKLU OTURUM: Eski cihazları logout yap
+            try {
+              await http.post(
+                Uri.parse('https://admin.funbreakvale.com/api/logout_other_devices.php'),
+                headers: {'Content-Type': 'application/json'},
+                body: json.encode({'user_id': _driverId, 'device_id': deviceId, 'user_type': 'driver'}),
+              ).timeout(const Duration(seconds: 5));
+              print('✅ ÇOKLU OTURUM: Eski cihazlar logout yapıldı');
+            } catch (e) {
+              print('⚠️ ÇOKLU OTURUM hatası (devam ediliyor): $e');
+            }
+            
             // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
             print('🔔🔔🔔 LOGİN: _updateFCMToken() ÇAĞ RILACAK! 🔔🔔🔔');
             try {
