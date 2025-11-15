@@ -785,19 +785,37 @@ class _RideChatScreenState extends State<RideChatScreen> {
       String? locationName;
       
       if (locationChoice == 'current') {
-        // MEVCUT KONUM - DİREK İZİN İSTE!
-        final permission = await Permission.location.request();
-        if (!permission.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('❌ Konum izni gerekli!'),
-              action: SnackBarAction(
-                label: 'Ayarlar',
-                onPressed: () => openAppSettings(),
+        // MEVCUT KONUM - iOS İÇİN Geolocator KULLAN!
+        try {
+          // iOS'ta permission_handler yerine Geolocator kullan
+          bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+          if (!serviceEnabled) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('❌ Konum servisi kapalı!'), backgroundColor: Colors.red),
+            );
+            return;
+          }
+          
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          
+          if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('❌ Konum izni gerekli!'),
+                backgroundColor: Colors.red,
+                action: SnackBarAction(
+                  label: 'Ayarlar',
+                  onPressed: () => openAppSettings(),
+                ),
               ),
-            ),
-          );
-          return;
+            );
+            return;
+          }
+        } catch (e) {
+          print('⚠️ Konum izin hatası: $e');
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1145,19 +1163,38 @@ class _RideChatScreenState extends State<RideChatScreen> {
 
   Future<void> _startRecording() async {
     try {
-      // MİKROFON İZNİ - DİREK İSTE!
-      final permission = await Permission.microphone.request();
-      if (!permission.isGranted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('❌ Mikrofon izni gerekli!'),
-            action: SnackBarAction(
-              label: 'Ayarlar',
-              onPressed: () => openAppSettings(),
+      // MİKROFON İZNİ - iOS İÇİN ÖZEL!
+      if (Platform.isIOS) {
+        final permission = await Permission.microphone.request();
+        if (permission.isDenied || permission.isPermanentlyDenied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('❌ Mikrofon izni gerekli! Lütfen Ayarlar\'dan izin verin.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Ayarlar',
+                onPressed: () => openAppSettings(),
+              ),
             ),
-          ),
-        );
-        return;
+          );
+          return;
+        }
+      } else {
+        // Android için eski kod
+        final permission = await Permission.microphone.request();
+        if (!permission.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('❌ Mikrofon izni gerekli!'),
+              action: SnackBarAction(
+                label: 'Ayarlar',
+                onPressed: () => openAppSettings(),
+              ),
+            ),
+          );
+          return;
+        }
       }
       
       final directory = await getApplicationDocumentsDirectory();
