@@ -67,7 +67,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   double _estimatedEarnings = 0.0;
   double _waitingFee = 0.0;
   double _waitingFeeGross = 0.0; // KOMİSYONSUZ BEKLEME ÜCRETİ!
-  double _calculatedTotalPrice = 0.0;
+  double _calculatedTotalPrice = 0.0; // ✅ GÜNCEL FİYAT (dinamik, değişir)
+  double _initialEstimatedPrice = 0.0; // ✅ TAHMİNİ FİYAT (sabit, değişmez - İLK ROTA FİYATI!)
   
   // Panel bekleme ayarları
   double _waitingFeePerInterval = 200.0; // Varsayılan: Her 15 dakika ₺200
@@ -148,7 +149,20 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         0.0;
     // ✅ Eğer 0 ise base_price kullan (minimum başlangıç fiyatı)
     _calculatedTotalPrice = initialTotal > 0 ? initialTotal : 50.0;
-    print('💰 [ŞOFÖR] İlk fiyat: ₺${_calculatedTotalPrice} (initialTotal: ₺$initialTotal)');
+    
+    // ✅ TAHMİNİ FİYAT (SABİT) - İLK ROTA SEÇERKENKİ FİYAT (DEĞİŞMEZ!)
+    _initialEstimatedPrice = double.tryParse(
+          widget.rideDetails['estimated_price']?.toString() ??
+          widget.rideDetails['initial_estimated_price']?.toString() ??
+          '0',
+        ) ??
+        0.0;
+    if (_initialEstimatedPrice == 0.0) {
+      _initialEstimatedPrice = _calculatedTotalPrice; // Fallback
+    }
+    
+    print('💰 [ŞOFÖR] İlk fiyat (güncel): ₺${_calculatedTotalPrice}');
+    print('📌 [ŞOFÖR] Tahmini fiyat (sabit): ₺${_initialEstimatedPrice} - Bu değişmeyecek!');
     _initializeWithRestore();
   }
   
@@ -4420,12 +4434,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     }
   }
 
-  // ✅ TAHMİNİ FİYAT (SABİT - İlk hesaplanan)
+  // ✅ TAHMİNİ FİYAT (SABİT - İlk hesaplanan, DEĞİŞMEZ!)
   String _getInitialEstimatedPrice() {
-    final initialPrice = double.tryParse(
-      widget.rideDetails['estimated_price']?.toString() ?? '0'
-    ) ?? 0.0;
-    return initialPrice.toStringAsFixed(0);
+    // ✅ Class değişkeninden al (initState'te set edildi, bir daha değişmez!)
+    return _initialEstimatedPrice.toStringAsFixed(0);
   }
 
   // ✅ GÜNCEL TUTAR (DİNAMİK - Backend estimated_price + Bekleme)
