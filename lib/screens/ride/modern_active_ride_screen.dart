@@ -75,6 +75,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   int _waitingFreeMinutes = 15; // İlk 15 dakika ücretsiz
   int _waitingIntervalMinutes = 15; // 15 dakikalık aralıklar
   
+  // ✅ DISTANCE_PRICING CACHE (fallback'te de kullanmak için!)
+  List<Map<String, dynamic>> _cachedDistancePricing = [];
+  
   // SAATLİK PAKETTE BEKLEME BUTONU GİZLENMELİ!
   bool get _shouldShowWaitingButton {
     // DESTINATION ADRES KONTROLÜ - SAATLİK PAKET İSE "(Saatlik Paket)" YAZAR!
@@ -348,9 +351,15 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           List<Map<String, dynamic>> distancePricingRanges = [];
           if (data['distance_pricing'] != null && data['distance_pricing'] is List) {
             distancePricingRanges = List<Map<String, dynamic>>.from(data['distance_pricing']);
-            print('✅ ŞOFÖR: ${distancePricingRanges.length} adet distance_pricing aralığı yüklendi');
+            _cachedDistancePricing = distancePricingRanges; // ✅ CACHE'E KAYDET (fallback için!)
+            print('✅ ŞOFÖR: ${distancePricingRanges.length} adet distance_pricing aralığı yüklendi + cache\'e kaydedildi');
           } else {
             print('⚠️ ŞOFÖR: distance_pricing yok, varsayılan KM fiyatı kullanılacak');
+            // Cache'den kullan (varsa)
+            if (_cachedDistancePricing.isNotEmpty) {
+              distancePricingRanges = _cachedDistancePricing;
+              print('📦 ŞOFÖR: Cache\'den ${distancePricingRanges.length} aralık kullanılıyor');
+            }
           }
           
           // ✅ BEKLEME AYARLARINI LOCAL DEĞİŞKENE AL (setState içinde güncellenecek!)
@@ -547,7 +556,23 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     const overnightThresholdFallback = 2.0;
     const hourlyPackagePriceFallback = 300.0;
 
-    final baseAndDistanceGrossFallback = basePriceFallback + (currentKmFallback * kmPriceFallback);
+    // ✅ FALLBACK: distance_pricing SABİT FİYAT (cache varsa kullan!)
+    double distancePriceFallback = currentKmFallback * kmPriceFallback; // Varsayılan
+    if (_cachedDistancePricing.isNotEmpty) {
+      for (var range in _cachedDistancePricing) {
+        final minKm = double.tryParse(range['min_km']?.toString() ?? '0') ?? 0.0;
+        final maxKm = double.tryParse(range['max_km']?.toString() ?? '0') ?? 0.0;
+        final rangePrice = double.tryParse(range['price']?.toString() ?? '0') ?? 0.0;
+        
+        if (currentKmFallback >= minKm && currentKmFallback <= maxKm && rangePrice > 0) {
+          distancePriceFallback = rangePrice; // ✅ SABİT FİYAT (cache'den!)
+          print('📏 FALLBACK KM ARALIK (cache): ${currentKmFallback}km → $minKm-${maxKm}km → ₺${rangePrice}');
+          break;
+        }
+      }
+    }
+    
+    final baseAndDistanceGrossFallback = distancePriceFallback; // ✅ Artık SABİT fiyat veya varsayılan
     double waitingFeeGrossFallback = 0.0;
     if (_isRideStarted && _waitingMinutes > waitingFreeMinutesFallback) {
       final chargeableMinutes = _waitingMinutes - waitingFreeMinutesFallback;
