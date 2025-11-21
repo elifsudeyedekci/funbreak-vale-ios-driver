@@ -382,46 +382,35 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             ) ??
             0.0;
         
-        // ÖNCE ESTIMATED_PRICE KONTROL ET!
-        final estimatedPriceFromRide = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0;
-        
+        // ✅ DAIMA distance_pricing SABİT FİYAT SİSTEMİ KULLAN!
         double totalPrice;
         double baseAndDistanceGross;
+        double distancePrice = currentKm * kmPrice; // Varsayılan (KM başına - fallback)
         
-        if (estimatedPriceFromRide > 0 && currentKm == 0) {
-          // BAŞLANGIÇ: estimated_price varsa ve henüz KM yoksa onu kullan
-          totalPrice = estimatedPriceFromRide;
-          baseAndDistanceGross = estimatedPriceFromRide;
-          print('💰 ŞOFÖR: Estimated price kullanılıyor: ₺${estimatedPriceFromRide.toStringAsFixed(2)}');
-        } else {
-          // ✅ YOLCULUK DEVAM EDİYOR: distance_pricing SABİT FİYAT SİSTEMİ!
-          double distancePrice = currentKm * kmPrice; // Varsayılan (KM başına)
-          
-          // distance_pricing aralıklarından uygun aralığı bul
-          bool rangeFound = false;
-          if (distancePricingRanges.isNotEmpty) {
-            for (var range in distancePricingRanges) {
-              final minKm = double.tryParse(range['min_km']?.toString() ?? '0') ?? 0.0;
-              final maxKm = double.tryParse(range['max_km']?.toString() ?? '0') ?? 0.0;
-              final rangePrice = double.tryParse(range['price']?.toString() ?? '0') ?? 0.0;
-              
-              if (currentKm >= minKm && currentKm <= maxKm && rangePrice > 0) {
-                distancePrice = rangePrice; // ✅ SABİT FİYAT (çarpmıyoruz!)
-                rangeFound = true;
-                print('📏 ŞOFÖR KM ARALIK: ${currentKm}km → $minKm-${maxKm}km aralığı → ₺${rangePrice} (SABİT)');
-                break;
-              }
+        // distance_pricing aralıklarından uygun aralığı bul (KM=0 için de!)
+        bool rangeFound = false;
+        if (distancePricingRanges.isNotEmpty) {
+          for (var range in distancePricingRanges) {
+            final minKm = double.tryParse(range['min_km']?.toString() ?? '0') ?? 0.0;
+            final maxKm = double.tryParse(range['max_km']?.toString() ?? '0') ?? 0.0;
+            final rangePrice = double.tryParse(range['price']?.toString() ?? '0') ?? 0.0;
+            
+            if (currentKm >= minKm && currentKm <= maxKm && rangePrice > 0) {
+              distancePrice = rangePrice; // ✅ SABİT FİYAT (çarpmıyoruz!)
+              rangeFound = true;
+              print('📏 ŞOFÖR KM ARALIK: ${currentKm}km → $minKm-${maxKm}km aralığı → ₺${rangePrice} (SABİT - panelden otomatik!)');
+              break;
             }
           }
-          
-          if (!rangeFound) {
-            print('⚠️ ŞOFÖR: Aralık bulunamadı, varsayılan hesaplama: ${currentKm}km × ₺${kmPrice} = ₺${distancePrice.toStringAsFixed(2)}');
-          }
-          
-          baseAndDistanceGross = distancePrice; // ✅ Artık SABİT fiyat veya varsayılan
-          totalPrice = baseAndDistanceGross;
-          print('💰 ŞOFÖR: Toplam mesafe fiyatı: ₺${totalPrice.toStringAsFixed(2)}');
         }
+        
+        if (!rangeFound) {
+          print('⚠️ ŞOFÖR: Aralık bulunamadı, varsayılan: ${currentKm}km × ₺${kmPrice} = ₺${distancePrice.toStringAsFixed(2)}');
+        }
+        
+        baseAndDistanceGross = distancePrice;
+        totalPrice = baseAndDistanceGross;
+        print('💰 ŞOFÖR GÜNCEL TUTAR: ₺${totalPrice.toStringAsFixed(2)} (panelden distance_pricing otomatik!)');
 
         // ✅ SAATLİK PAKET KONTROLÜ ÖNCE YAPILMALI!
         bool isHourlyMode = false;
