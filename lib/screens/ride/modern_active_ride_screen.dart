@@ -143,9 +143,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       print('   $key: $value');
     });
     
-    // ✅ GÜNCEL TUTAR BAŞLANGIÇ: 0-5km aralık fiyatını kullan (panelden otomatik çekilecek)
-    // ❌ Database estimated_price KULLANMA! (yanlış olabilir!)
-    _calculatedTotalPrice = 1000.0; // İlk aralık fiyatı (distance_pricing'den güncellenecek)
+    // ✅ GÜNCEL TUTAR BAŞLANGIÇ: Müşteri ile aynı tutar (2 saniye içinde panelden güncellenecek)
+    _calculatedTotalPrice = 1500.0; // Geçici başlangıç (panelden distance_pricing otomatik çekilecek)
     
     // ✅ TAHMİNİ FİYAT (SABİT) - İLK ROTA SEÇERKENKİ FİYAT (DEĞİŞMEZ!)
     _initialEstimatedPrice = double.tryParse(
