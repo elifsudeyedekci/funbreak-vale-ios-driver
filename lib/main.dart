@@ -768,45 +768,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
           print('📱 ŞOFÖR: Kapalıyken gelen bildirime tıklandı');
           print('   📋 Title: ${message.notification?.title}');
           print('   📊 Data: ${message.data}');
-          print('🔔 Background notification çalışıyor - System tray\'den açıldı');
+          print('🔔 Background notification - SADECE PERSISTENCE, POPUP AÇMA!');
           
-          // YENİ TALEP BİLDİRİMİ İŞLEME - BACKGROUND'DAN AÇILINCA!
+          // YENİ TALEP BİLDİRİMİ İŞLEME - SADECE PERSISTENCE!
           final messageType = message.data['type'] ?? '';
           if (messageType == 'new_ride_request') {
             final rideId = message.data['ride_id']?.toString() ?? '';
-            
-            // DUPLİCATE KONTROL!
-            if (_shownPopupRideIds.contains(rideId)) {
-              print('⚠️ Popup zaten gösterildi - duplicate atlandı: $rideId');
-              return;
-            }
-            
-            print('🚗 === BACKGROUND\'DAN YENİ VALE TALEBİ POPUP AÇILIYOR ===');
-            final distance = message.data['distance_km'] ?? '';
+            print('🚗 === BİLDİRİM TIKLANDI - SADECE PERSISTENCE KAYDEDILIYOR ===');
             print('   🆔 Ride ID: $rideId');
-            print('   📍 Mesafe: ${distance}km');
+            print('   ✅ _restorePendingRideRequestPopup() otomatik popup açacak!');
             
-            _shownPopupRideIds.add(rideId); // İŞARETLE!
-            
-            // Biraz bekle ki uygulama tamamen yüklensin, sonra popup aç
-            Future.delayed(const Duration(milliseconds: 1500), () async {
-              // ÇEVRİMDIŞI KONTROLÜ!
-              final prefs = await SharedPreferences.getInstance();
-              final isOnline = prefs.getBool('driver_is_online') ?? false;
-              
-              if (!isOnline) {
-                print('🔴 [POPUP ENGELLENDI] Sürücü çevrimdışı - talep popup\'ı açılmıyor!');
-                return;
-              }
-              
-              if (navigatorKey.currentContext != null) {
-                print('🚗 POPUP AÇILIYOR - Background\'dan gelen bildirim için (ÇEVRİMİÇİ)');
+            // SADECE PERSISTENCE KAYDET - POPUP İÇİN _restorePendingRideRequestPopup() kullanılacak
                 RidePersistenceService.savePendingRideRequest(message.data);
-                _showRideRequestPopup(navigatorKey.currentContext!, message.data);
-              } else {
-                print('❌ Context yok - popup açılamadı');
-              }
-            });
+            print('✅ Talep persistence\'e kaydedildi - Uygulama açılınca popup otomatik açılacak');
           }
           
           // MANUEL ATAMA BİLDİRİMİ İŞLEME - BACKGROUND'DAN DİREKT YOLCULUK EKRANI!
@@ -1330,9 +1304,27 @@ void _showRideRequestPopup(BuildContext context, Map<String, dynamic> data) {
   final arrivalMinutes = data['arrival_minutes']?.toString() ?? '0';
   final pickupAddress = data['pickup_address'] ?? 'Konum belirtilmedi';
   final destinationAddress = data['destination_address'] ?? 'Varış belirtilmedi';
+  final waypointsRaw = data['waypoints'] ?? '';
   final scheduledTimeRaw = data['scheduled_time'] ?? '';
   final estimatedPrice = data['estimated_price'] ?? '0';
   final customerName = data['customer_name'] ?? 'Müşteri';
+  
+  // ARA DURAK PARSE ET
+  List<String> waypoints = [];
+  if (waypointsRaw != null && waypointsRaw.toString().isNotEmpty) {
+    try {
+      if (waypointsRaw is String) {
+        final decoded = json.decode(waypointsRaw);
+        if (decoded is List) {
+          waypoints = decoded.map((w) => w['address']?.toString() ?? '').where((a) => a.isNotEmpty).toList();
+        }
+      } else if (waypointsRaw is List) {
+        waypoints = waypointsRaw.map((w) => w['address']?.toString() ?? '').where((a) => a.isNotEmpty).toList();
+      }
+    } catch (e) {
+      print('⚠️ Waypoints parse hatası: $e');
+    }
+  }
   
   // SCHEDULED TIME FORMATLAMA - MÜŞTERİNİN SEÇTİĞİ ZAMAN!
   String scheduledTime = 'Hemen';
@@ -1443,6 +1435,47 @@ void _showRideRequestPopup(BuildContext context, Map<String, dynamic> data) {
                     ),
                   ],
                 ),
+                
+                // ARA DURAKLAR
+                if (waypoints.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange, width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.route, color: Colors.orange, size: 20),
+                            const SizedBox(width: 6),
+                            Text('Ara Duraklar (${waypoints.length}):', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ...waypoints.asMap().entries.map((entry) {
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 20, top: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${entry.key + 1}. ', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange)),
+                                Expanded(
+                                  child: Text(entry.value, style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  ),
+                ],
+                
                 const SizedBox(height: 12),
                 
                 // MESAFE, FİYAT VE VARIŞI TAHMİNİ - DETAYLI!

@@ -1964,6 +1964,13 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         widget.rideDetails['estimated_price'] = rideInfo['estimated_price'] ?? widget.rideDetails['estimated_price'];
         widget.rideDetails['current_km'] = currentKmFromApi;
         
+        // 🛣️ WAYPOINTS GÜNCELLEME - BACKEND'DEN GELEN ARA DURAKLAR!
+        if (rideInfo['waypoints'] != null && rideInfo['waypoints'].toString().isNotEmpty) {
+          widget.rideDetails['waypoints'] = rideInfo['waypoints'];
+          _currentRideStatus['waypoints'] = rideInfo['waypoints'];
+          print('🛣️ [WAYPOINTS UPDATE] Ara duraklar güncellendi: ${rideInfo['waypoints']}');
+        }
+        
         // SAATLİK PAKET TESPİTİ İÇİN BACKEND'DEN GELEN DEĞERLER!
         widget.rideDetails['service_type'] = rideInfo['service_type'] ?? widget.rideDetails['service_type'];
         widget.rideDetails['ride_type'] = rideInfo['ride_type'] ?? widget.rideDetails['ride_type'];
@@ -2560,21 +2567,12 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       final rideId = widget.rideDetails['ride_id']?.toString() ?? '0';
       print('🆔 ŞOFÖR: Ride ID: $rideId');
       
-      final totalKm = _calculateDistanceMeters(
-            double.tryParse(widget.rideDetails['pickup_lat']?.toString() ?? '') ??
-                double.tryParse(widget.rideDetails['pickup_latitude']?.toString() ?? '') ??
-                0.0,
-            double.tryParse(widget.rideDetails['pickup_lng']?.toString() ?? '') ??
-                double.tryParse(widget.rideDetails['pickup_longitude']?.toString() ?? '') ??
-                0.0,
-            double.tryParse(widget.rideDetails['destination_lat']?.toString() ?? '') ??
-                double.tryParse(widget.rideDetails['destination_latitude']?.toString() ?? '') ??
-                0.0,
-            double.tryParse(widget.rideDetails['destination_lng']?.toString() ?? '') ??
-                double.tryParse(widget.rideDetails['destination_longitude']?.toString() ?? '') ??
-                0.0,
-          ) /
-          1000.0;
+      // ✅ BACKEND'DEN GERÇEK KM AL! (Düz çizgi değil, gerçek yol!)
+      final totalKm = double.tryParse(
+        _currentRideStatus['total_distance']?.toString() ?? 
+        _currentRideStatus['current_km']?.toString() ??
+        widget.rideDetails['total_distance']?.toString() ?? '0'
+      ) ?? 0.0;
       
       print('📏 ŞOFÖR: Total KM: $totalKm');
       print('⏰ ŞOFÖR: Waiting Minutes: $_waitingMinutes');
@@ -4108,8 +4106,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   // ✅ ARA DURAKLAR (WAYPOINTS) WİDGET LİSTESİ OLUŞTUR!
   List<Widget> _buildWaypoints() {
     try {
-      final waypointsJson = widget.rideDetails['waypoints'];
-      if (waypointsJson == null || waypointsJson.toString().isEmpty) {
+      // ÖNCE GÜNCEL STATUS'TEN, SONRA WIDGET.RIDEDETAILS'TEN AL!
+      final waypointsJson = _currentRideStatus['waypoints'] ?? widget.rideDetails['waypoints'];
+      
+      print('🔍 [WAYPOINTS DEBUG] waypointsJson type: ${waypointsJson.runtimeType}');
+      print('🔍 [WAYPOINTS DEBUG] waypointsJson value: $waypointsJson');
+      
+      if (waypointsJson == null || waypointsJson.toString().isEmpty || waypointsJson.toString() == 'null') {
+        print('⚠️ [WAYPOINTS] Boş veya null, ara durak yok');
         return [];
       }
       
@@ -4122,10 +4126,12 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       }
       
       if (waypoints.isEmpty) {
+        print('⚠️ [WAYPOINTS] Parse edildi ama liste boş');
         return [];
       }
       
       print('🛣️ [AKTİF YOLCULUK] ${waypoints.length} ara durak bulundu');
+      print('🛣️ [WAYPOINTS DATA] $waypoints');
       
       // Waypoints widget listesi
       List<Widget> waypointWidgets = [];

@@ -45,9 +45,9 @@ class LocationTrackingService {
         // ✅ ANDROID - Foreground Service ile arka plan
         locationSettings = AndroidSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 5, // ✅ 5m altı filtrelenir (duplicate önleme, backend 3m filtreler)
+          distanceFilter: 15, // ✅ 15m optimal! (köşeler + network optimize)
           forceLocationManager: false,
-          intervalDuration: Duration(seconds: 3), // ✅ Her 3 saniye (optimize)
+          intervalDuration: Duration(seconds: 3), // ✅ Her 3 saniye VEYA 15m hareket
           foregroundNotificationConfig: ForegroundNotificationConfig(
             notificationText: "Yolculuk takibi devam ediyor",
             notificationTitle: "FunBreak Vale - Konum Aktif",
@@ -60,7 +60,7 @@ class LocationTrackingService {
         locationSettings = AppleSettings(
           accuracy: LocationAccuracy.high,
           activityType: ActivityType.automotiveNavigation, // Araç navigasyon
-          distanceFilter: 5, // ✅ 5m altı filtrelenir (duplicate önleme)
+          distanceFilter: 15, // ✅ 15m optimal! (network optimize + battery)
           pauseLocationUpdatesAutomatically: false, // ✅ Otomatik DURAKLATMA YOK!
           showBackgroundLocationIndicator: true, // iOS arka plan çubuğu
           allowBackgroundLocationUpdates: true, // ✅ ARKA PLAN KRİTİK!
@@ -69,7 +69,7 @@ class LocationTrackingService {
         // Fallback - Generic settings
         locationSettings = LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
+          distanceFilter: 15, // ✅ 15m optimal!
           timeLimit: Duration(minutes: 30),
         );
       }
