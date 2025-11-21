@@ -143,15 +143,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       print('   $key: $value');
     });
     
-    // KRİTİK: ÖNCE RESTORE, SONRA DİĞER İŞLEMLER!
-    final initialTotal = double.tryParse(
-          widget.rideDetails['calculated_price']?.toString() ??
-          widget.rideDetails['estimated_price']?.toString() ??
-          '0',
-        ) ??
-        0.0;
-    // ✅ Eğer 0 ise base_price kullan (minimum başlangıç fiyatı)
-    _calculatedTotalPrice = initialTotal > 0 ? initialTotal : 50.0;
+    // ✅ GÜNCEL TUTAR BAŞLANGIÇ: 0-5km aralık fiyatını kullan (panelden otomatik çekilecek)
+    // ❌ Database estimated_price KULLANMA! (yanlış olabilir!)
+    _calculatedTotalPrice = 1000.0; // İlk aralık fiyatı (distance_pricing'den güncellenecek)
     
     // ✅ TAHMİNİ FİYAT (SABİT) - İLK ROTA SEÇERKENKİ FİYAT (DEĞİŞMEZ!)
     _initialEstimatedPrice = double.tryParse(
