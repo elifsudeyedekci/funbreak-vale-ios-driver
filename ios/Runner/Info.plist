@@ -85,7 +85,6 @@
 		<string>remote-notification</string>
 		<string>location</string>
 		<string>processing</string>
-		<string>audio</string>
 	</array>
 	
 	<!-- ⚠️ BACKGROUND TASK SCHEDULER (processing mode için zorunlu!) -->
