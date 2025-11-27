@@ -497,10 +497,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           _waitingFeePerInterval = waitingFeePerInterval;
           _waitingIntervalMinutes = waitingIntervalMinutes;
           
+          // ✅ BACKEND FİYAT OVERRIDE - UI gösterim için
+          final backendPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0;
+          final backendEarnings = backendPrice * 0.7; // %30 komisyon
+          
           _waitingFee = waitingFeeNet; // Komisyonlu (şoför kazancı için)
           _waitingFeeGross = waitingFeeGross; // KOMİSYONSUZ (müşteriye göstermek için)!
-          _estimatedEarnings = baseDriverNet;
-          _calculatedTotalPrice = totalPrice;
+          _estimatedEarnings = backendEarnings; // ✅ BACKEND OVERRIDE!
+          _calculatedTotalPrice = backendPrice;  // ✅ BACKEND OVERRIDE!
         });
         
         widget.rideDetails['calculated_price'] = totalPrice;
