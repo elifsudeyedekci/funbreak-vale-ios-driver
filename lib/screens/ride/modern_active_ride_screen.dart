@@ -401,9 +401,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           print('⚠️ ŞOFÖR: Aralık bulunamadı, varsayılan: ${currentKm}km × ₺${kmPrice} = ₺${distancePrice.toStringAsFixed(2)}');
         }
         
-        baseAndDistanceGross = distancePrice;
-        totalPrice = baseAndDistanceGross;
-        print('💰 ŞOFÖR GÜNCEL TUTAR: ₺${totalPrice.toStringAsFixed(2)} (panelden distance_pricing otomatik!)');
+        // ✅ BACKEND FİYAT KULLAN (UI karışıklığını önlemek için)
+        totalPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? distancePrice;
+        baseAndDistanceGross = totalPrice;
+        print('💰 ŞOFÖR UI FİYAT: ₺${totalPrice.toStringAsFixed(2)} (backend estimated_price kullanılıyor!)');
 
         // ✅ SAATLİK PAKET KONTROLÜ ÖNCE YAPILMALI!
         bool isHourlyMode = false;
