@@ -2559,11 +2559,17 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       print('📏 ŞOFÖR: Total KM: $totalKm');
       print('⏰ ŞOFÖR: Waiting Minutes: $_waitingMinutes');
       
-      // ✅ KRİTİK FIX: Backend'e BRÜT fiyat gönder (komisyon öncesi)!
-      // 🚨 KRİTİK FIX: Backend'e TOPLAM FİYAT GÖNDER (BEKLEME DAHİL!)
-      final totalEarningsToSend = _calculatedTotalPrice > 0 ? _calculatedTotalPrice : (double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0);
+      // ✅ KRİTİK FIX: Backend'den alınan estimated_price kullan (kendi hesaplama yapma!)
+      // Backend distance_pricing tablosuna göre doğru fiyatı hesaplasın
+      final backendEstimatedPrice = double.tryParse(
+        widget.rideDetails['estimated_price']?.toString() ?? 
+        _currentRideStatus['estimated_price']?.toString() ?? 
+        '0'
+      ) ?? 0.0;
       
-      print('💰 ŞOFÖR: Total Earnings (BRÜT - BEKLEME DAHİL): $totalEarningsToSend (_calculatedTotalPrice: $_calculatedTotalPrice)');
+      final totalEarningsToSend = backendEstimatedPrice;
+      
+      print('💰 ŞOFÖR: Backend Estimated Price KULLANILIYOR: $totalEarningsToSend (eskisi _calculatedTotalPrice: $_calculatedTotalPrice)');
       print('🌐 ŞOFÖR: completeRide API çağrısı başlıyor...');
 
       final completionData = await RideService.completeRide(
