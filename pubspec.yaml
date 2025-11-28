@@ -2,7 +2,7 @@ name: funbreak_vale_driver
 description: "FunBreak Vale Driver App"
 publish_to: 'none'
 
-version: 1.4.3+109
+version: 1.4.4+110
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -27,6 +27,7 @@ dependencies:
   flutter_sound: ^9.28.0
   path_provider: ^2.1.1
   url_launcher: ^6.3.2
+  device_info_plus: ^11.2.1
 
 dev_dependencies:
   flutter_test:
