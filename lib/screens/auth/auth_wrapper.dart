@@ -6,6 +6,7 @@ import '../home/driver_home_screen.dart';
 import 'login_screen.dart';
 import '../../services/ride_persistence_service.dart';
 import '../ride/modern_active_ride_screen.dart';
+import '../legal/driver_legal_consent_screen.dart'; // YASAL SÖZLEŞME EKRANI!
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({Key? key}) : super(key: key);
@@ -17,6 +18,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
   bool _isLoggedIn = false;
+  bool _contractsAccepted = false; // SÖZLEŞME ONAY DURUMU!
 
   @override
   void initState() {
@@ -29,8 +31,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
       final prefs = await SharedPreferences.getInstance();
       final driverId = prefs.getString('driver_id');
       final authToken = prefs.getString('auth_token');
+      final contractsAccepted = prefs.getBool('driver_contracts_accepted') ?? false;
       
       print('🔐 [ŞOFÖR] Auth kontrol: Driver ID = $driverId, Token = ${authToken != null ? "Var" : "Yok"}');
+      print('📋 [ŞOFÖR] Sözleşme durumu: ${contractsAccepted ? "Onaylanmış" : "Onaylanmamış"}');
       
       final isLoggedIn = driverId != null && driverId.isNotEmpty;
       
@@ -41,6 +45,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       
       setState(() {
         _isLoggedIn = isLoggedIn;
+        _contractsAccepted = contractsAccepted;
         _isLoading = false;
       });
       
@@ -48,6 +53,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       print('❌ [ŞOFÖR] Auth kontrol hatası: $e');
       setState(() {
         _isLoggedIn = false;
+        _contractsAccepted = false;
         _isLoading = false;
       });
     }
@@ -206,7 +212,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     // Giriş durumuna göre yönlendir
     if (_isLoggedIn) {
-      print('✅ [ŞOFÖR] Giriş yapılmış - Ana sayfaya yönlendiriliyor');
+      // SÖZLEŞME KONTROLÜ - İlk giriş mi?
+      if (!_contractsAccepted) {
+        print('📋 [ŞOFÖR] Sözleşmeler onaylanmamış - Sözleşme ekranına yönlendiriliyor');
+        return const DriverLegalConsentScreen();
+      }
+      
+      print('✅ [ŞOFÖR] Giriş yapılmış ve sözleşmeler onaylı - Ana sayfaya yönlendiriliyor');
       return const DriverHomeScreen();
     } else {
       print('ℹ️ [ŞOFÖR] Giriş yapılmamış - Login sayfasına yönlendiriliyor');
