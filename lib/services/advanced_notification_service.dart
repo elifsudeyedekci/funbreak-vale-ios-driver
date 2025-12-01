@@ -256,45 +256,60 @@ class AdvancedNotificationService {
           sound: true,
         );
         
-        // 🔄 iOS APNs TOKEN BEKLEME - FCM token için ZORUNLU!
-        String? apnsToken;
-        for (int i = 0; i < 10; i++) {
-          apnsToken = await _messaging!.getAPNSToken();
-          if (apnsToken != null) {
-            print('📱 APNs token (Vale) alındı (deneme ${i + 1}): ${apnsToken.substring(0, apnsToken.length > 12 ? 12 : apnsToken.length)}...');
-            break;
-          }
-          print('⏳ APNs token (Vale) bekleniyor... (${i + 1}/10)');
-          await Future.delayed(Duration(seconds: 1));
-        }
-        
-        if (apnsToken == null) {
-          print('⚠️ APNs token (Vale) 10 saniye içinde alınamadı - FCM token alınamayabilir!');
-        }
+        // 🔄 iOS APNs TOKEN - ARKA PLANDA BEKLE (UI BLOKE ETME!)
+        _waitForApnsAndGetFcmToken();
+      } else {
+        // Android için direkt FCM token al
+        _getFcmTokenDirect();
       }
-      
-      // ✅ TOKEN AL (10 saniye timeout ile!)
-      try {
-        final token = await _messaging!.getToken().timeout(
-          Duration(seconds: 10),
-          onTimeout: () {
-            print('⏱️ FCM token alma timeout!');
-            return null;
-          },
-        );
-        
-        if (token != null) {
-          print('✅ FCM Token alındı: ${token.substring(0, 30)}...');
-          await _updateDriverTokenOnServer(token);
-        } else {
-          print('⚠️ FCM token null döndü - iOS APNs token sorunu olabilir');
-        }
-      } catch (e) {
-        print('❌ FCM token alma hatası: $e');
-      }
-      
     } catch (e) {
       print('❌ İzin isteme hatası: $e');
+    }
+  }
+  
+  // ✅ iOS için APNs bekle ve FCM token al (ARKA PLANDA!)
+  static Future<void> _waitForApnsAndGetFcmToken() async {
+    try {
+      String? apnsToken;
+      // Maksimum 5 deneme, her biri 500ms (toplam 2.5 saniye max)
+      for (int i = 0; i < 5; i++) {
+        apnsToken = await _messaging!.getAPNSToken();
+        if (apnsToken != null) {
+          print('📱 APNs token (Vale) alındı (deneme ${i + 1})');
+          break;
+        }
+        await Future.delayed(Duration(milliseconds: 500));
+      }
+      
+      if (apnsToken == null) {
+        print('⚠️ APNs token (Vale) alınamadı - FCM token denenecek');
+      }
+      
+      await _getFcmTokenDirect();
+    } catch (e) {
+      print('❌ APNs/FCM hatası: $e');
+    }
+  }
+  
+  // ✅ FCM Token al (Android ve iOS ortak)
+  static Future<void> _getFcmTokenDirect() async {
+    try {
+      final token = await _messaging!.getToken().timeout(
+        Duration(seconds: 5), // 10 -> 5 saniye
+        onTimeout: () {
+          print('⏱️ FCM token alma timeout!');
+          return null;
+        },
+      );
+      
+      if (token != null) {
+        print('✅ FCM Token alındı: ${token.substring(0, 30)}...');
+        await _updateDriverTokenOnServer(token);
+      } else {
+        print('⚠️ FCM token null döndü');
+      }
+    } catch (e) {
+      print('❌ FCM token alma hatası: $e');
     }
   }
   

@@ -171,18 +171,32 @@ class _RideChatScreenState extends State<RideChatScreen> {
             });
           }
 
-          // 🔥 GÜÇLÜ DUPLICATE KONTROLÜ - ID + MESSAGE CONTENT + TIMESTAMP
-          final existingSignatures = _messages.map((m) {
-            final msgContent = m['message']?.toString() ?? '';
-            final msgTime = (m['timestamp'] as DateTime).millisecondsSinceEpoch ~/ 1000; // Saniye hassasiyeti
-            return '${msgContent}_$msgTime';
+          // 🔥 GÜÇLÜ DUPLICATE KONTROLÜ - MESSAGE CONTENT BAZLI (Timestamp olmadan!)
+          // Resim URL'leri için sadece içerik kontrolü yeterli
+          final existingContents = _messages.map((m) {
+            return m['message']?.toString() ?? '';
           }).toSet();
+          
+          // Ayrıca ID bazlı kontrol
+          final existingIds = _messages.map((m) => m['id']?.toString() ?? '').toSet();
           
           merged.removeWhere((msg) {
             final msgContent = msg['message']?.toString() ?? '';
-            final msgTime = (msg['timestamp'] as DateTime).millisecondsSinceEpoch ~/ 1000;
-            final signature = '${msgContent}_$msgTime';
-            return existingSignatures.contains(signature);
+            final msgId = msg['id']?.toString() ?? '';
+            
+            // Eğer içerik zaten varsa (resim URL'si aynıysa) - duplicate
+            if (existingContents.contains(msgContent) && msgContent.isNotEmpty) {
+              print('⚠️ ŞOFÖR: Duplicate engellendi (content): $msgContent');
+              return true;
+            }
+            
+            // Eğer ID zaten varsa - duplicate
+            if (existingIds.contains(msgId) && msgId.isNotEmpty && !msgId.startsWith('temp_')) {
+              print('⚠️ ŞOFÖR: Duplicate engellendi (id): $msgId');
+              return true;
+            }
+            
+            return false;
           });
 
           if (merged.isNotEmpty) {
@@ -569,14 +583,20 @@ class _RideChatScreenState extends State<RideChatScreen> {
                     if (app == null) return;
                     
                     String mapUrl;
+                    String fallbackUrl;
+                    
                     if (app == 'google') {
                       // Google Maps URI
                       mapUrl = Platform.isIOS
                           ? 'comgooglemaps://?q=$lat,$lng'
                           : 'geo:$lat,$lng?q=$lat,$lng($locationName)';
+                      fallbackUrl = 'https://www.google.com/maps?q=$lat,$lng';
                     } else {
-                      // Yandex Maps URI
-                      mapUrl = 'yandexmaps://maps.yandex.com/?ll=$lng,$lat&z=16';
+                      // Yandex Maps URI - Yandex Navigator
+                      mapUrl = Platform.isIOS
+                          ? 'yandexnavi://build_route_on_map?lat_to=$lat&lon_to=$lng'
+                          : 'yandexnavi://build_route_on_map?lat_to=$lat&lon_to=$lng';
+                      fallbackUrl = 'https://yandex.com/maps/?pt=$lng,$lat&z=16';
                     }
                     
                     print('🗺️ ŞOFÖR Harita açılıyor: $mapUrl');
@@ -585,8 +605,8 @@ class _RideChatScreenState extends State<RideChatScreen> {
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri, mode: LaunchMode.externalApplication);
                     } else {
-                      // Uygulama yoksa web tarayıcıda aç
-                      final webUrl = Uri.parse('https://www.google.com/maps?q=$lat,$lng');
+                      // Uygulama yoksa web tarayıcıda aç - SEÇİLEN HARİTA İÇİN!
+                      final webUrl = Uri.parse(fallbackUrl);
                       await launchUrl(webUrl, mode: LaunchMode.externalApplication);
                     }
                     
@@ -875,19 +895,25 @@ class _RideChatScreenState extends State<RideChatScreen> {
           uploadedImageUrl = await _uploadImage(image.path, int.parse(widget.rideId));
           if (uploadedImageUrl != null) {
             print('✅ ŞOFÖR Resim upload: $uploadedImageUrl');
+            // Mesajı güncelle - tempId ile bul ve URL'i güncelle
             setState(() {
-              _messages.last['message'] = uploadedImageUrl;
+              final index = _messages.indexWhere((msg) => msg['id'] == tempId);
+              if (index >= 0) {
+                _messages[index]['message'] = uploadedImageUrl;
+                _messages[index]['synced'] = true;
+              }
             });
             await _persistMessages();
             
             // API'ye gönder - SADECE BİR KERE!
             await _sendMessageToAPI(uploadedImageUrl, 'image');
-            print('📸 Fotoğraf gönderildi');
+            print('📸 Fotoğraf gönderildi: $uploadedImageUrl');
           } else {
             print('❌ Upload başarısız - mesaj siliniyor');
             setState(() {
               _messages.removeWhere((msg) => msg['id'] == tempId);
             });
+            await _persistMessages();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('❌ Fotoğraf yüklenemedi'), backgroundColor: Colors.red),
             );
@@ -898,6 +924,7 @@ class _RideChatScreenState extends State<RideChatScreen> {
           setState(() {
             _messages.removeWhere((msg) => msg['id'] == tempId);
           });
+          await _persistMessages();
           return;
         }
         
@@ -1244,7 +1271,7 @@ class _RideChatScreenState extends State<RideChatScreen> {
   // 🌍 KONUM ARAMA API (Google Places)
   Future<List<Map<String, dynamic>>> _searchLocation(String query) async {
     try {
-      const apiKey = 'AIzaSyC_j9KEoNv7-mRMj2m6uh5NeGsqWe0Phlw'; // Google Maps API Key
+      const apiKey = 'AIzaSyAmPUh6vlin_kvFvssOyKHz5BBjp5WQMaY'; // Google Maps API Key (FunBreak Vale)
       
       final url = Uri.parse(
         'https://maps.googleapis.com/maps/api/place/textsearch/json?query=$query&key=$apiKey&language=tr&region=TR',
@@ -1407,15 +1434,36 @@ class _RideChatScreenState extends State<RideChatScreen> {
   Future<void> _startRecording() async {
     try {
       // 🔥 iOS İÇİN DÜZGÜN MİKROFON İZNİ KONTROLÜ
-      final status = await Permission.microphone.status;
-      // Mikrofon izni durumu: $status
+      var status = await Permission.microphone.status;
+      print('🎤 iOS Mikrofon izni durumu: $status');
       
-      if (status.isDenied) {
-        // İlk kez istenecek - sistem popup'ı çıkacak
-        final result = await Permission.microphone.request();
-        // Mikrofon izni sonucu: $result
-        
-        if (!result.isGranted) {
+      // iOS'ta ilk kez sorulacaksa veya denied ise izin iste
+      if (!status.isGranted) {
+        print('🎤 Mikrofon izni isteniyor...');
+        status = await Permission.microphone.request();
+        print('🎤 Mikrofon izni sonucu: $status');
+      }
+      
+      // İzin verilmediyse
+      if (!status.isGranted) {
+        if (status.isPermanentlyDenied) {
+          // Kalıcı olarak reddedilmiş - ayarlara yönlendir
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('❌ Mikrofon izni gerekli! Ayarlardan izin verin.'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
+                action: SnackBarAction(
+                  label: 'Ayarlar',
+                  textColor: Colors.white,
+                  onPressed: () => openAppSettings(),
+                ),
+              ),
+            );
+          }
+        } else {
+          // Normal red
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -1424,27 +1472,11 @@ class _RideChatScreenState extends State<RideChatScreen> {
               ),
             );
           }
-          return;
-        }
-      } else if (status.isPermanentlyDenied || status.isRestricted) {
-        // Kalıcı olarak reddedilmiş - ayarlara yönlendir
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('❌ Mikrofon izni gerekli! Ayarlardan izin verin.'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Ayarlar',
-                textColor: Colors.white,
-                onPressed: () => openAppSettings(),
-              ),
-            ),
-          );
         }
         return;
       }
-      // status.isGranted ise devam et
+      
+      print('✅ Mikrofon izni verildi, kayıt başlatılıyor...');
       
       final directory = await getApplicationDocumentsDirectory();
       final audioDir = Directory('${directory.path}/audio');
