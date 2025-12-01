@@ -405,25 +405,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           print('⚠️ ŞOFÖR: Aralık bulunamadı, varsayılan: ${currentKm}km × ₺${kmPrice} = ₺${distancePrice.toStringAsFixed(2)}');
         }
         
-        // ✅ KM BAZLI FİYAT HESAPLA (distance_pricing aralıklarından!)
-        // Backend'den gelen estimated_price yerine GERÇEK KM'ye göre hesapla!
-        if (rangeFound) {
-          totalPrice = distancePrice; // ✅ distance_pricing aralığından SABİT fiyat
-        } else {
-          // Aralık bulunamadıysa en düşük aralığı kullan (KM=0 için)
-          if (distancePricingRanges.isNotEmpty) {
-            final firstRange = distancePricingRanges.first;
-            totalPrice = double.tryParse(firstRange['price']?.toString() ?? '0') ?? 1500.0;
-            print('📏 ŞOFÖR: KM=0 için en düşük aralık fiyatı: ₺${totalPrice.toStringAsFixed(2)}');
-          } else {
-            totalPrice = 1500.0; // Fallback
-          }
-        }
-        baseAndDistanceGross = totalPrice;
-        print('💰 ŞOFÖR UI FİYAT: ₺${totalPrice.toStringAsFixed(2)} (KM: ${currentKm.toStringAsFixed(2)}, distance_pricing kullanılıyor!)');
-
         // ✅ SAATLİK PAKET KONTROLÜ ÖNCE YAPILMALI!
         bool isHourlyMode = false;
+        double rideDurationHours = 0.0;
         
         // Service type direkt kontrol et!
         final serviceType = widget.rideDetails['service_type']?.toString().toLowerCase() ?? 
@@ -432,75 +416,104 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         if (serviceType == 'hourly') {
           isHourlyMode = true;
           print('📦 [ŞOFÖR] SAATLİK PAKET (service_type=hourly) - Bekleme ücreti İPTAL!');
-        } else if (_isRideStarted && _rideStartTime != null) {
-          final rideDurationHours = DateTime.now().difference(_rideStartTime!).inMinutes / 60.0;
-          if (rideDurationHours >= 2.0) {
+        }
+        
+        // Yolculuk süresi hesapla
+        if (_isRideStarted && _rideStartTime != null) {
+          rideDurationHours = DateTime.now().difference(_rideStartTime!).inMinutes / 60.0;
+          if (rideDurationHours >= 2.0 && !isHourlyMode) {
             isHourlyMode = true;
-            print('📦 [ŞOFÖR] 2+ SAAT GEÇTİ - Bekleme ücreti İPTAL!');
+            print('📦 [ŞOFÖR] 2+ SAAT GEÇTİ - Saatlik pakete geçildi!');
           }
         }
 
-        // Bekleme ücreti hesaplama - SAATLİK PAKETTE İPTAL! (PANEL'DEN GELEN AYARLARLA!)
+        // ✅ FİYAT HESAPLAMA - SAATLİK VEYA MESAFE BAZLI
+        double totalPrice = 0.0;
+        double baseAndDistanceGross = 0.0;
+        
+        if (isHourlyMode) {
+          // =====================================================
+          // 📦 SAATLİK PAKET - SÜREYE GÖRE FİYAT HESAPLA!
+          // =====================================================
+          if (_cachedHourlyPackages.isNotEmpty) {
+            double? packagePrice;
+            String packageLabel = '';
+            
+            for (var pkg in _cachedHourlyPackages) {
+              final startHour = pkg["start"] ?? 0.0;
+              final endHour = pkg["end"] ?? 0.0;
+              final price = pkg["price"] ?? 0.0;
+              
+              if (rideDurationHours >= startHour && rideDurationHours < endHour) {
+                packagePrice = price;
+                packageLabel = "$startHour-$endHour saat";
+                break;
+              }
+            }
+            
+            // Yeni başladıysa veya bulunamadıysa en düşük paketi kullan
+            if (packagePrice == null && _cachedHourlyPackages.isNotEmpty) {
+              final firstPkg = _cachedHourlyPackages.first;
+              packagePrice = firstPkg["price"];
+              final startHour = firstPkg["start"] ?? 0.0;
+              final endHour = firstPkg["end"] ?? 0.0;
+              packageLabel = "$startHour-$endHour saat (başlangıç)";
+            }
+            
+            if (packagePrice != null && packagePrice > 0) {
+              totalPrice = packagePrice;
+              print('📦 SAATLİK PAKET: $packageLabel (${rideDurationHours.toStringAsFixed(2)}saat) → ₺${totalPrice.toStringAsFixed(2)}');
+            } else {
+              totalPrice = hourlyPackagePrice > 0 ? hourlyPackagePrice : 3000.0; // Fallback
+              print('⚠️ SAATLİK PAKET: Fallback fiyat → ₺${totalPrice.toStringAsFixed(2)}');
+            }
+          } else {
+            totalPrice = hourlyPackagePrice > 0 ? hourlyPackagePrice : 3000.0; // Fallback
+            print('⚠️ SAATLİK PAKET: Cache boş, fallback → ₺${totalPrice.toStringAsFixed(2)}');
+          }
+          baseAndDistanceGross = totalPrice;
+          print('💰 ŞOFÖR UI FİYAT (SAATLİK): ₺${totalPrice.toStringAsFixed(2)} - KM ve bekleme ücreti YOK!');
+        } else {
+          // =====================================================
+          // 📏 MESAFE BAZLI - KM'YE GÖRE FİYAT HESAPLA!
+          // =====================================================
+          if (rangeFound) {
+            totalPrice = distancePrice; // distance_pricing aralığından SABİT fiyat
+          } else {
+            // Aralık bulunamadıysa en düşük aralığı kullan (KM=0 için)
+            if (distancePricingRanges.isNotEmpty) {
+              final firstRange = distancePricingRanges.first;
+              totalPrice = double.tryParse(firstRange['price']?.toString() ?? '0') ?? 1500.0;
+              print('📏 ŞOFÖR: KM=0 için en düşük aralık fiyatı: ₺${totalPrice.toStringAsFixed(2)}');
+            } else {
+              totalPrice = 1500.0; // Fallback
+            }
+          }
+          baseAndDistanceGross = totalPrice;
+          print('💰 ŞOFÖR UI FİYAT (MESAFE): ₺${totalPrice.toStringAsFixed(2)} (KM: ${currentKm.toStringAsFixed(2)})');
+          
+          // Bekleme ücreti hesaplama - SADECE MESAFE BAZLIDA!
+          if (_isRideStarted && _waitingMinutes > waitingFreeMinutes) {
+            final chargeableMinutes = _waitingMinutes - waitingFreeMinutes;
+            final intervals = (chargeableMinutes / waitingIntervalMinutes).ceil();
+            final waitingFeeCalc = intervals * waitingFeePerInterval;
+            totalPrice += waitingFeeCalc;
+            print('💰 ŞOFÖR: Bekleme ücreti eklendi: $_waitingMinutes dk → +₺${waitingFeeCalc.toStringAsFixed(2)}');
+          }
+        }
+        
+        // Minimum ücret kontrolü
+        if (totalPrice < minimumFare && minimumFare > 0) {
+          totalPrice = minimumFare;
+          print('⚠️ Minimum ücret uygulandı: ₺${minimumFare.toStringAsFixed(2)}');
+        }
+        
+        // Bekleme ücreti hesaplama (setState için)
         double waitingFeeGross = 0.0;
         if (!isHourlyMode && _isRideStarted && _waitingMinutes > waitingFreeMinutes) {
           final chargeableMinutes = _waitingMinutes - waitingFreeMinutes;
           final intervals = (chargeableMinutes / waitingIntervalMinutes).ceil();
           waitingFeeGross = intervals * waitingFeePerInterval;
-          totalPrice += waitingFeeGross;
-          print('💰 ŞOFÖR: Bekleme ücreti eklendi: $_waitingMinutes dk (ücretsiz: $waitingFreeMinutes dk) → $intervals aralık × ₺$waitingFeePerInterval = +₺${waitingFeeGross.toStringAsFixed(2)}');
-        } else if (isHourlyMode) {
-          print('✅ [ŞOFÖR] SAATLİK PAKET - Bekleme ücreti 0!');
-        }
-
-        if (totalPrice < minimumFare && minimumFare > 0) {
-          totalPrice = minimumFare;
-        }
-
-        // SAATLİK PAKET SİSTEMİ - 2 SAAT SONRA PAKET FİYATI!
-        if (_isRideStarted && _rideStartTime != null) {
-          final rideDurationHours = DateTime.now().difference(_rideStartTime!).inMinutes / 60.0;
-          
-          if (rideDurationHours >= 2.0) {
-            // CACHE'LENMIŞ PAKETLERI KULLAN!
-            if (_cachedHourlyPackages.isNotEmpty) {
-              // Hangi pakette olduğunu belirle
-              double? packagePrice;
-              String packageLabel = '';
-              
-              for (var pkg in _cachedHourlyPackages) {
-                final startHour = pkg["start"] ?? 0.0;
-                final endHour = pkg["end"] ?? 0.0;
-                final price = pkg["price"] ?? 0.0;
-                
-                if (rideDurationHours >= startHour && rideDurationHours < endHour) {
-                  packagePrice = price;
-                  packageLabel = "$startHour-$endHour saat";
-                  break;
-                }
-              }
-              
-              // Bulunamazsa son paketi kullan
-              if (packagePrice == null && _cachedHourlyPackages.isNotEmpty) {
-                final lastPkg = _cachedHourlyPackages.last;
-                packagePrice = lastPkg["price"];
-                final startHour = lastPkg["start"] ?? 0.0;
-                packageLabel = "$startHour+ saat";
-              }
-              
-              if (packagePrice != null && packagePrice > 0) {
-                totalPrice = packagePrice;
-                print('📦 SAATLİK PAKET: $packageLabel (${rideDurationHours.toStringAsFixed(2)}saat) → ₺${totalPrice.toStringAsFixed(2)}');
-                print('   ✅ PANELDEN CACHE - ${_cachedHourlyPackages.length} paket mevcut');
-                print('   ⚠️ KM HESABI YOK - SADECE PAKET FİYATI!');
-              }
-            } else {
-              // Fallback
-              print('⚠️ [ŞOFÖR] Cache boş - fallback hourlyPackagePrice');
-              if (hourlyPackagePrice > 0) {
-                totalPrice = hourlyPackagePrice;
-              }
-            }
-          }
         }
 
         final totalDriverNet = totalPrice * driverRate;
