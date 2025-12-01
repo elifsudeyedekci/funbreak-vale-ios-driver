@@ -176,14 +176,50 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     // 1. PANEL'DEN BEKLEME AYARLARINI ÇEK!
     await _fetchPanelWaitingSettings();
     
-    // 2. SAATLİK PAKETLERI YÜ KLE!
+    // 2. SAATLİK PAKETLERI YÜKLE!
     await _loadHourlyPackages();
     
-    // 3. RESTORE ET
+    // 3. DISTANCE PRICING YÜKLE VE BAŞLANGIÇ FİYATI BELİRLE!
+    await _loadDistancePricingAndSetInitialPrice();
+    
+    // 4. RESTORE ET
     await _restoreRideStartedFromPersistence();
     
-    // 4. DİĞER İŞLEMLER
+    // 5. DİĞER İŞLEMLER
     _initializeRideTracking();
+  }
+  
+  // ✅ DISTANCE PRICING YÜKLE VE BAŞLANGIÇ FİYATINI PANEL'DEN AL!
+  Future<void> _loadDistancePricingAndSetInitialPrice() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://admin.funbreakvale.com/api/get_pricing_info.php?ts=${DateTime.now().millisecondsSinceEpoch}'),
+      ).timeout(const Duration(seconds: 5));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data['success'] == true) {
+          // Distance pricing cache'e kaydet
+          if (data['distance_pricing'] != null && data['distance_pricing'] is List) {
+            _cachedDistancePricing = List<Map<String, dynamic>>.from(data['distance_pricing']);
+            print('✅ [ŞOFÖR] ${_cachedDistancePricing.length} distance_pricing aralığı yüklendi');
+            
+            // ✅ BAŞLANGIÇ FİYATI: En düşük aralığın fiyatını kullan (KM=0 için)
+            if (_cachedDistancePricing.isNotEmpty && _calculatedTotalPrice == 0.0) {
+              final firstRange = _cachedDistancePricing.first;
+              final lowestPrice = double.tryParse(firstRange['price']?.toString() ?? '0') ?? 1500.0;
+              setState(() {
+                _calculatedTotalPrice = lowestPrice;
+              });
+              print('💰 [ŞOFÖR] Başlangıç fiyatı panel\'den alındı: ₺$lowestPrice');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('⚠️ [ŞOFÖR] Distance pricing yükleme hatası: $e');
+    }
   }
   
   // PANEL'DEN BEKLEME AYARLARINI ÇEK
