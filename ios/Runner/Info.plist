@@ -92,7 +92,7 @@
 	
 	<!-- ⚠️ BİLDİRİM SES DOSYASI -->
 	<key>UILocalNotificationDefaultSoundName</key>
-	<string>notification.caf</string>
+	<string>default</string>
 	
 	<!-- ⚠️ Google Maps EMBED -->
 	<key>io.flutter.embedded_views_preview</key>

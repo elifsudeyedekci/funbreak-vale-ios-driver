@@ -5,15 +5,15 @@ class DynamicContactService {
   static const String baseUrl = 'https://admin.funbreakvale.com/api';
   
   static String getSupportPhone() {
-    return '0850 460 78 46';
+    return '0533 448 82 53';
   }
   
   static String getSupportEmail() {
-    return 'destek@funbreakvale.com';
+    return 'info@funbreakvale.com';
   }
   
   static String getWhatsAppNumber() {
-    return '0850 460 78 46';
+    return '0533 448 82 53';
   }
   
   static Future<void> initialize() async {

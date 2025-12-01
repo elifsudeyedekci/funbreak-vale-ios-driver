@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart'; // ✅ BEKLEME KONUM İÇİN!
 import '../../services/ride_persistence_service.dart';
+import '../../services/background_location_service.dart'; // 🚗 ARKA PLAN KM HESABI!
 import '../messaging/ride_messaging_screen.dart';
 import '../../services/company_contact_service.dart'; // ŞİRKET ARAMA SERVİSİ!
 import '../chat/ride_chat_screen.dart'; // GERÇEK MESAJLAŞMA!
@@ -51,6 +52,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   // Yolculuk durum kontrol
   bool _isRideStarted = false; // YOLCULUK BAŞLADI MI?
   DateTime? _rideStartTime;    // BAŞLAMA ZAMANI
+  
+  // ✅ ARAMA KONTROLÜ (İKİ KEZ ARAMA ENGEL!)
+  bool _isCalling = false;
   
   // ✅ SAATLİK PAKET CACHE
   List<Map<String, double>> _cachedHourlyPackages = [];
@@ -2617,6 +2621,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         // YOLCULUK BİTTİ - PERSİSTENCE TEMİZLE! (KAYDETME!)
         await RidePersistenceService.clearActiveRide();
         print('🗑️ [ŞOFÖR] Persistence tamamen temizlendi - yeni talep aranabilir!');
+        
+        // 🚗 ARKA PLAN KONUM SERVİSİ DURDUR (YOLCULUK BİTTİ!)
+        try {
+          await BackgroundLocationService.stopRideTracking();
+          print('✅ [ŞOFÖR] Background location service durduruldu');
+        } catch (e) {
+          print('⚠️ [ŞOFÖR] Background service durdurma hatası: $e');
+        }
 
         // DriverRideProvider'daki aktif yolculuğu temizle - POLLING YENİDEN BAŞLASIN!
         try {
@@ -2716,6 +2728,87 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     // );
   }
   
+  // ŞİRKETİ ARA POPUP - Alt bardaki "Ara" butonu için
+  void _showCompanyCallPopup() {
+    const companyPhone = '0533 448 82 53';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.business, color: Color(0xFFFFD700), size: 28),
+            SizedBox(width: 12),
+            Text('📞 Şirketi Ara', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.support_agent, color: Color(0xFFFFD700), size: 60),
+            const SizedBox(height: 16),
+            const Text(
+              'FunBreak Vale destek hattı ile iletişime geçebilirsiniz.',
+              style: TextStyle(color: Colors.white, fontSize: 15),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFD700)),
+              ),
+              child: const Column(
+                children: [
+                  Text(
+                    '📞 Şirket Numarası',
+                    style: TextStyle(color: Color(0xFFFFD700), fontSize: 12),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    companyPhone,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              final uri = Uri(scheme: 'tel', path: companyPhone.replaceAll(' ', ''));
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            },
+            icon: const Icon(Icons.phone, color: Colors.black),
+            label: const Text('Şirketi Ara', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // KÖPRÜ SİSTEMİ - PANELDEN DESTEK TELEFONU ÇEK! ✅
   Future<void> _startBridgeCall() async {
     try {
@@ -3002,6 +3095,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     await _notifyCustomerRideStarted();
     _calculateEarnings();
     _saveToPersistence(); // BAŞLATMA DURUMUNU HEMEN KAYDET!
+    
+    // 🚗 ARKA PLAN KONUM SERVİSİ BAŞLAT (UYGULAMA KAPALIYKEN DE KM HESABI!)
+    try {
+      await BackgroundLocationService.startRideTracking(rideId.toString());
+      print('✅ [ŞOFÖR] Background location service başlatıldı - KM kesintisiz hesaplanacak!');
+    } catch (e) {
+      print('⚠️ [ŞOFÖR] Background service başlatma hatası: $e');
+    }
 
     print('✅ [ŞOFÖR] Yolculuk başlatma işlemi TAMAMLANDI!');
 
@@ -3021,6 +3122,17 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   // OTOMATİK MÜŞTERİ KÖPRÜ SİSTEMİ - DİREKT BAĞLAMA! ✅
   // ✅ NETGSM KÖPRÜ ARAMA SİSTEMİ - ŞOFÖR! 🔥
   Future<void> _callCustomerDirectly() async {
+    // ✅ İKİ KEZ ARAMA/POPUP ENGEL!
+    if (_isCalling) {
+      print('⚠️ [ŞOFÖR] Arama/popup zaten açık, duplicate engellendi!');
+      return;
+    }
+    
+    // ✅ POPUP AÇILMADAN ÖNCE FLAG SET ET!
+    setState(() {
+      _isCalling = true;
+    });
+    
     final customerName = _currentRideStatus['customer_name'] ?? widget.rideDetails['customer_name'] ?? 'Müşteri';
     
     // ✅ Müşteri telefonu - tüm kaynaklardan dene!
@@ -3055,6 +3167,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             behavior: SnackBarBehavior.floating,
           ),
         );
+        // ✅ HATA DURUMUNDA FLAG RESET!
+        setState(() {
+          _isCalling = false;
+        });
       }
       return;
     }
@@ -3062,11 +3178,12 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     // Köprü hattı numarası (SABİT!)
     const bridgeNumber = '0216 606 45 10';
     
-    print('📞 [ŞOFÖR] Köprü arama başlatılıyor - Müşteri: $customerName');
+    print('📞 [ŞOFÖR] Köprü arama popup açılıyor - Müşteri: $customerName');
     
     // Bilgilendirme ve onay dialogu
     showDialog(
       context: context,
+      barrierDismissible: false, // ✅ Dışarı tıklayarak kapatmayı engelle!
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -3129,12 +3246,22 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              // ✅ VAZGEÇ - FLAG RESET!
+              if (mounted) {
+                setState(() {
+                  _isCalling = false;
+                });
+              }
+              print('📞 [ŞOFÖR] Arama iptal edildi, flag reset');
+            },
             child: const Text('Vazgeç', style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(context);
+              // ✅ _isCalling flag'i _initiateBridgeCallToCustomer içinde yönetiliyor
               await _initiateBridgeCallToCustomer(rideId, customerPhone, customerName);
             },
             icon: const Icon(Icons.phone, color: Colors.white),
@@ -3152,6 +3279,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
   
   // ✅ KÖPRÜ ARAMASI BAŞLAT - BACKEND ÜZERİNDEN!
   Future<void> _initiateBridgeCallToCustomer(int rideId, String customerPhone, String customerName) async {
+    // ✅ _isCalling flag zaten _callCustomerDirectly'de true yapıldı!
+    // Sadece API çağrısı ve telefon açma işlemi yapılır
+    
     try {
       // Şoför numarasını al
       final prefs = await SharedPreferences.getInstance();
@@ -3240,6 +3370,13 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             behavior: SnackBarBehavior.floating,
           ),
         );
+      }
+    } finally {
+      // ✅ ARAMA BİTTİ - FLAG SIFIRLA!
+      if (mounted) {
+        setState(() {
+          _isCalling = false;
+        });
       }
     }
   }
@@ -3526,7 +3663,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     final currentStatus = _currentRideStatus['status'] ?? widget.rideDetails['status'] ?? '';
     if (currentStatus == 'completed' || currentStatus == 'cancelled') {
       RidePersistenceService.clearActiveRide();
-      print('🗑️ [ŞOFÖR] Yolculuk bitti - Persistence temizlendi');
+      // 🚗 ARKA PLAN SERVİSİ DURDUR (İPTAL/TAMAMLANDI)
+      BackgroundLocationService.stopRideTracking();
+      print('🗑️ [ŞOFÖR] Yolculuk bitti - Persistence + Background service temizlendi');
     } else {
       print('💾 [ŞOFÖR] Yolculuk devam ediyor - Persistence korundu');
     }
@@ -3615,11 +3754,12 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             ),
             
             // Telefon Butonu
+            // Telefon Butonu - ŞİRKETİ ARA POPUP!
             _buildDriverBottomBarItem(
               icon: Icons.phone,
               label: 'Ara',
               isActive: false,
-              onTap: () => _startBridgeCall(), // KÖPRÜ SİSTEMİ!
+              onTap: () => _showCompanyCallPopup(),
             ),
             
             // Durum Butonu
@@ -4052,6 +4192,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
               onPressed: () async {
                 // Persistence temizle
                 await RidePersistenceService.clearActiveRide();
+                // 🚗 ARKA PLAN SERVİSİ DURDUR (MÜŞTERİ İPTAL ETTİ)
+                await BackgroundLocationService.stopRideTracking();
                 
                 // Ana sayfaya dön - GÜÇLENDİRİLMİŞ NAVİGASYON
                 if (mounted) {

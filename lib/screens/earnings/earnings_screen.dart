@@ -523,6 +523,36 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                       ),
                     ],
                   ),
+                // ✅ ÖZEL KONUM ÜCRETİ (Komisyonsuz - %100 sürücüye!)
+                if (ride['location_extra_fee'] != null && (double.tryParse(ride['location_extra_fee'].toString()) ?? 0.0) > 0)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 14, color: Colors.blue[700]),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Özel Konum (Komisyonsuz):',
+                              style: TextStyle(fontSize: 11, color: Colors.blue[700], fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '+₺${(double.tryParse(ride['location_extra_fee'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                          style: TextStyle(fontSize: 11, color: Colors.blue[700], fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
                 const Divider(height: 12, thickness: 1),
                 // ✅ İPTAL DURUMU UYARISI
                 if (isCancelled)
@@ -546,7 +576,7 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                         ),
                       ],
                     ),
-                  ), // ✅ COMMA EKLENDİ!
+                  ),
                 // BRÜT ÜCRET (final_price = taban + bekleme - indirim)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
