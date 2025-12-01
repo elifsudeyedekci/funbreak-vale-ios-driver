@@ -147,13 +147,18 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       print('   $key: $value');
     });
     
-    // ✅ GÜNCEL TUTAR BAŞLANGIÇ: Müşteri ile aynı tutar (2 saniye içinde panelden güncellenecek)
-    _calculatedTotalPrice = 1500.0; // Geçici başlangıç (panelden distance_pricing otomatik çekilecek)
+    // ✅ GÜNCEL TUTAR BAŞLANGIÇ: Backend'den gelen estimated_price'ı kullan!
+    _calculatedTotalPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0;
+    if (_calculatedTotalPrice == 0.0) {
+      _calculatedTotalPrice = 1500.0; // Fallback (2 saniye içinde panelden güncellenecek)
+    }
     
     // ✅ TAHMİNİ FİYAT (SABİT) - İLK ROTA SEÇERKENKİ FİYAT (DEĞİŞMEZ!)
+    // ÖNCE initial_estimated_price kontrol et (database'deki sabit değer)
     _initialEstimatedPrice = double.tryParse(
-          widget.rideDetails['estimated_price']?.toString() ??
           widget.rideDetails['initial_estimated_price']?.toString() ??
+          widget.rideDetails['db_initial_estimated_price']?.toString() ??
+          widget.rideDetails['estimated_price']?.toString() ??
           '0',
         ) ??
         0.0;
