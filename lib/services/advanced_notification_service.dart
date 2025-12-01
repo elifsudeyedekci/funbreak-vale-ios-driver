@@ -267,42 +267,30 @@ class AdvancedNotificationService {
     }
   }
   
-  // ✅ iOS için APNs bekle ve FCM token al (ARKA PLANDA!)
+  // ✅ iOS için APNs bekle ve FCM token al
   static Future<void> _waitForApnsAndGetFcmToken() async {
     try {
+      // APNs token'ı al - Runner.entitlements ile artık çalışmalı
       String? apnsToken;
-      // Maksimum 15 deneme, her biri 1 saniye (toplam 15 saniye max)
-      // iOS'ta APNs token almak bazen uzun sürebilir
-      for (int i = 0; i < 15; i++) {
-        try {
-          apnsToken = await _messaging!.getAPNSToken();
-          if (apnsToken != null) {
-            print('📱 APNs token (Vale) alındı (deneme ${i + 1}): ${apnsToken.substring(0, 20)}...');
-            break;
-          }
-        } catch (e) {
-          print('⚠️ APNs token (Vale) deneme ${i + 1} hatası: $e');
+      
+      // 3 deneme yap (toplam 3 saniye)
+      for (int i = 0; i < 3; i++) {
+        apnsToken = await _messaging!.getAPNSToken();
+        if (apnsToken != null) {
+          print('📱 APNs token (Vale) alındı: ${apnsToken.substring(0, 20)}...');
+          break;
         }
-        
-        if (i < 14) {
-          await Future.delayed(Duration(seconds: 1));
-        }
+        await Future.delayed(Duration(seconds: 1));
       }
       
       if (apnsToken == null) {
-        print('⚠️ APNs token (Vale) 15 denemede alınamadı - FCM token yine de denenecek');
+        print('⚠️ APNs token (Vale) alınamadı - Runner.entitlements dosyasını kontrol edin!');
       }
       
-      // APNs token olsun veya olmasın FCM token almayı dene
+      // FCM token al
       await _getFcmTokenDirect();
     } catch (e) {
       print('❌ APNs/FCM hatası: $e');
-      // Hata olsa bile FCM token almayı dene
-      try {
-        await _getFcmTokenDirect();
-      } catch (e2) {
-        print('❌ FCM token retry hatası: $e2');
-      }
     }
   }
   
