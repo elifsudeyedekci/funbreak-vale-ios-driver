@@ -405,10 +405,22 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           print('⚠️ ŞOFÖR: Aralık bulunamadı, varsayılan: ${currentKm}km × ₺${kmPrice} = ₺${distancePrice.toStringAsFixed(2)}');
         }
         
-        // ✅ BACKEND FİYAT KULLAN (UI karışıklığını önlemek için)
-        totalPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? distancePrice;
+        // ✅ KM BAZLI FİYAT HESAPLA (distance_pricing aralıklarından!)
+        // Backend'den gelen estimated_price yerine GERÇEK KM'ye göre hesapla!
+        if (rangeFound) {
+          totalPrice = distancePrice; // ✅ distance_pricing aralığından SABİT fiyat
+        } else {
+          // Aralık bulunamadıysa en düşük aralığı kullan (KM=0 için)
+          if (distancePricingRanges.isNotEmpty) {
+            final firstRange = distancePricingRanges.first;
+            totalPrice = double.tryParse(firstRange['price']?.toString() ?? '0') ?? 1500.0;
+            print('📏 ŞOFÖR: KM=0 için en düşük aralık fiyatı: ₺${totalPrice.toStringAsFixed(2)}');
+          } else {
+            totalPrice = 1500.0; // Fallback
+          }
+        }
         baseAndDistanceGross = totalPrice;
-        print('💰 ŞOFÖR UI FİYAT: ₺${totalPrice.toStringAsFixed(2)} (backend estimated_price kullanılıyor!)');
+        print('💰 ŞOFÖR UI FİYAT: ₺${totalPrice.toStringAsFixed(2)} (KM: ${currentKm.toStringAsFixed(2)}, distance_pricing kullanılıyor!)');
 
         // ✅ SAATLİK PAKET KONTROLÜ ÖNCE YAPILMALI!
         bool isHourlyMode = false;
@@ -501,14 +513,11 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           _waitingFeePerInterval = waitingFeePerInterval;
           _waitingIntervalMinutes = waitingIntervalMinutes;
           
-          // ✅ BACKEND FİYAT OVERRIDE - UI gösterim için
-          final backendPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0;
-          final backendEarnings = backendPrice * 0.7; // %30 komisyon
-          
+          // ✅ HESAPLANAN FİYAT KULLAN (distance_pricing + bekleme + saatlik paket dahil!)
           _waitingFee = waitingFeeNet; // Komisyonlu (şoför kazancı için)
           _waitingFeeGross = waitingFeeGross; // KOMİSYONSUZ (müşteriye göstermek için)!
-          _estimatedEarnings = backendEarnings; // ✅ BACKEND OVERRIDE!
-          _calculatedTotalPrice = backendPrice;  // ✅ BACKEND OVERRIDE!
+          _estimatedEarnings = totalDriverNet; // ✅ HESAPLANAN NET KAZANÇ!
+          _calculatedTotalPrice = totalPrice;  // ✅ HESAPLANAN TOPLAM FİYAT!
         });
         
         widget.rideDetails['calculated_price'] = totalPrice;
