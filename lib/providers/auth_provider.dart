@@ -164,14 +164,13 @@ class AuthProvider with ChangeNotifier {
               print('⚠️ ÇOKLU OTURUM hatası (devam ediliyor): $e');
             }
             
-            // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
-            print('🔔🔔🔔 LOGİN: _updateFCMToken() ÇAĞ RILACAK! 🔔🔔🔔');
-            try {
-              await _updateFCMToken();
+            // ✅ LOGİN BAŞARILI - FCM TOKEN KAYDET (ARKA PLANDA - BEKLEMEDEN!)
+            print('🔔🔔🔔 LOGİN: _updateFCMToken() ARKA PLANDA ÇAĞRILACAK! 🔔🔔🔔');
+            _updateFCMToken().then((_) {
               print('✅ LOGİN: _updateFCMToken() TAMAMLANDI!');
-            } catch (fcmError) {
+            }).catchError((fcmError) {
               print('❌❌❌ LOGİN: _updateFCMToken() EXCEPTION: $fcmError ❌❌❌');
-            }
+            });
             
             _isLoading = false;
             notifyListeners();
@@ -211,14 +210,13 @@ class AuthProvider with ChangeNotifier {
         await _updateDriverStatus(true);
         print('✅ TEST LOGİN: update_driver_status tamamlandı');
         
-        // ✅ TEST HESABI LOGİN - FCM TOKEN KAYDET (AWAIT İLE BEKLE!)
-        print('🔔🔔🔔 TEST LOGİN: _updateFCMToken() ÇAĞRILACAK! 🔔🔔🔔');
-        try {
-          await _updateFCMToken();
+        // ✅ TEST HESABI LOGİN - FCM TOKEN KAYDET (ARKA PLANDA - BEKLEMEDEN!)
+        print('🔔🔔🔔 TEST LOGİN: _updateFCMToken() ARKA PLANDA ÇAĞRILACAK! 🔔🔔🔔');
+        _updateFCMToken().then((_) {
           print('✅ TEST LOGİN: _updateFCMToken() TAMAMLANDI!');
-        } catch (fcmError) {
+        }).catchError((fcmError) {
           print('❌❌❌ TEST LOGİN: _updateFCMToken() EXCEPTION: $fcmError ❌❌❌');
-        }
+        });
         
         _isLoading = false;
         notifyListeners();
@@ -674,6 +672,24 @@ class AuthProvider with ChangeNotifier {
       }
       
       print('✅ iOS VALE: İzin VERİLDİ - Token alınacak...');
+      
+      // ✅ iOS için APNs token bekle (maksimum 10 saniye)
+      if (Platform.isIOS) {
+        print('📱 iOS VALE: APNs token bekleniyor...');
+        String? apnsToken;
+        for (int i = 0; i < 20; i++) {
+          apnsToken = await messaging.getAPNSToken();
+          if (apnsToken != null) {
+            print('✅ iOS VALE: APNs token alındı (${i * 500}ms sonra)');
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+        
+        if (apnsToken == null) {
+          print('⚠️ iOS VALE: APNs token 10 saniyede alınamadı - yine de FCM dene');
+        }
+      }
       
       final fcmToken = await messaging.getToken().timeout(
         const Duration(seconds: 10),
