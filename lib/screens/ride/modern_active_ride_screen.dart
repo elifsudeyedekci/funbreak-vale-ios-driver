@@ -469,8 +469,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         }
 
         // ✅ FİYAT HESAPLAMA - SAATLİK VEYA MESAFE BAZLI
-        double totalPrice = 0.0;
-        double baseAndDistanceGross = 0.0;
+        totalPrice = 0.0;
+        baseAndDistanceGross = 0.0;
         
         if (isHourlyMode) {
           // =====================================================
