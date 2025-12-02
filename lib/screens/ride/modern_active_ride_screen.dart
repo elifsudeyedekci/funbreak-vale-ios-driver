@@ -148,10 +148,8 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     });
     
     // ✅ GÜNCEL TUTAR BAŞLANGIÇ: Backend'den gelen estimated_price'ı kullan!
-    _calculatedTotalPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0;
-    if (_calculatedTotalPrice == 0.0) {
-      _calculatedTotalPrice = 1500.0; // Fallback (2 saniye içinde panelden güncellenecek)
-    }
+    // ⚠️ İLK BAŞLANGIÇTA 0 KULLAN - Panel'den en düşük fiyat alınacak!
+    _calculatedTotalPrice = 0.0;
     
     // ✅ TAHMİNİ FİYAT (SABİT) - İLK ROTA SEÇERKENKİ FİYAT (DEĞİŞMEZ!)
     // ÖNCE initial_estimated_price kontrol et (database'deki sabit değer)
@@ -162,12 +160,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
           '0',
         ) ??
         0.0;
-    if (_initialEstimatedPrice == 0.0) {
-      _initialEstimatedPrice = _calculatedTotalPrice; // Fallback
-    }
     
+    // ⚠️ _initialEstimatedPrice backend'den gelecek, 0 ise _loadDistancePricingAndSetInitialPrice() düzeltecek
     print('💰 [ŞOFÖR] İlk fiyat (güncel): ₺${_calculatedTotalPrice}');
-    print('📌 [ŞOFÖR] Tahmini fiyat (sabit): ₺${_initialEstimatedPrice} - Bu değişmeyecek!');
+    print('📌 [ŞOFÖR] Tahmini fiyat (sabit): ₺${_initialEstimatedPrice} - Backend\'den alınacak...');
     _initializeWithRestore();
   }
   
@@ -205,14 +201,33 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
             _cachedDistancePricing = List<Map<String, dynamic>>.from(data['distance_pricing']);
             print('✅ [ŞOFÖR] ${_cachedDistancePricing.length} distance_pricing aralığı yüklendi');
             
-            // ✅ BAŞLANGIÇ FİYATI: En düşük aralığın fiyatını kullan (KM=0 için)
-            if (_cachedDistancePricing.isNotEmpty && _calculatedTotalPrice == 0.0) {
+            // ✅ BAŞLANGIÇ FİYATI: Backend'den estimated_price varsa kullan, yoksa en düşük aralık
+            final backendPrice = double.tryParse(widget.rideDetails['estimated_price']?.toString() ?? '0') ?? 0.0;
+            
+            if (backendPrice > 0) {
+              // Backend fiyatı varsa kullan
+              setState(() {
+                _calculatedTotalPrice = backendPrice;
+                // ✅ TAHMİNİ FİYAT da 0 ise backend'den al!
+                if (_initialEstimatedPrice == 0.0) {
+                  _initialEstimatedPrice = backendPrice;
+                  print('📌 [ŞOFÖR] Tahmini fiyat backend\'den alındı: ₺$backendPrice');
+                }
+              });
+              print('💰 [ŞOFÖR] Backend fiyatı kullanıldı: ₺$backendPrice');
+            } else if (_cachedDistancePricing.isNotEmpty) {
+              // Backend fiyatı yoksa en düşük aralığı kullan (KM=0 için)
               final firstRange = _cachedDistancePricing.first;
               final lowestPrice = double.tryParse(firstRange['price']?.toString() ?? '0') ?? 1500.0;
               setState(() {
                 _calculatedTotalPrice = lowestPrice;
+                // ✅ TAHMİNİ FİYAT da 0 ise en düşük aralığı al!
+                if (_initialEstimatedPrice == 0.0) {
+                  _initialEstimatedPrice = lowestPrice;
+                  print('📌 [ŞOFÖR] Tahmini fiyat en düşük aralıktan alındı: ₺$lowestPrice');
+                }
               });
-              print('💰 [ŞOFÖR] Başlangıç fiyatı panel\'den alındı: ₺$lowestPrice');
+              print('💰 [ŞOFÖR] Başlangıç fiyatı panel\'den alındı (KM=0): ₺$lowestPrice');
             }
           }
         }
@@ -1098,22 +1113,16 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                       fontSize: 9,
                     ),
                   ),
-                  // ✅ SAATLİK PAKET ETİKETİ
-                  if ((widget.rideDetails['service_type']?.toString() == 'hourly') ||
-                      (widget.rideDetails['destination_address']?.toString().toLowerCase().contains('saatlik') ?? false))
+                  // ✅ SAATLİK PAKET ADI GÖSTER (Direkt seçildiyse)
+                  if (_isHourlyPackageActive())
                     Container(
-                      margin: const EdgeInsets.only(top: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Saatlik Paket',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      margin: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        _getHourlyPackageLabel(),
+                        style: const TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -1155,7 +1164,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                     ),
                   ),
                   Text(
-                    '${_getCurrentKm()} km + ${_waitingMinutes} dk',
+                    _isHourlyPackageActive() 
+                      ? 'Saatlik paket' 
+                      : '${_getCurrentKm()} km + ${_waitingMinutes} dk',
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 9,
@@ -2017,6 +2028,15 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         widget.rideDetails['destination_address'] = rideInfo['destination_address'] ?? widget.rideDetails['destination_address'];
         widget.rideDetails['estimated_price'] = rideInfo['estimated_price'] ?? widget.rideDetails['estimated_price'];
         widget.rideDetails['current_km'] = currentKmFromApi;
+        
+        // ✅ KRİTİK: _calculatedTotalPrice'ı DA GÜNCELLE (uygulama kapatıp açınca sıfırlanma sorunu!)
+        // Backend'den gelen estimated_price varsa kullan
+        final backendEstimatedPrice = double.tryParse(rideInfo['estimated_price']?.toString() ?? '0') ?? 0.0;
+        if (backendEstimatedPrice > 0 && !_isRideStarted) {
+          // Yolculuk başlamamışsa backend'den gelen estimated_price'ı kullan
+          _calculatedTotalPrice = backendEstimatedPrice;
+          print('💰 [ŞOFÖR UPDATE] Backend estimated_price ile _calculatedTotalPrice güncellendi: ₺$backendEstimatedPrice');
+        }
         
         // 🛣️ WAYPOINTS GÜNCELLEME - BACKEND'DEN GELEN ARA DURAKLAR!
         if (rideInfo['waypoints'] != null && rideInfo['waypoints'].toString().isNotEmpty) {
@@ -3816,11 +3836,10 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
               onTap: () => _openMessaging(),
             ),
             
-            // Telefon Butonu
             // Telefon Butonu - ŞİRKETİ ARA POPUP!
             _buildDriverBottomBarItem(
               icon: Icons.phone,
-              label: 'Ara',
+              label: 'Şirketi Ara',
               isActive: false,
               onTap: () => _showCompanyCallPopup(),
             ),
@@ -4669,10 +4688,40 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     return _initialEstimatedPrice.toStringAsFixed(0);
   }
 
-  // ✅ GÜNCEL TUTAR (DİNAMİK - _calculatedTotalPrice her 2s güncelleniyor!)
+  // ✅ SAATLİK PAKET ADI (initial_estimated_price'a göre hangi paket)
+  String _getHourlyPackageLabel() {
+    // Backend'den gelen initial_estimated_price'a göre paket adını bul
+    if (_cachedHourlyPackages.isEmpty || _initialEstimatedPrice == 0) {
+      return 'Saatlik paket';
+    }
+    
+    // Backend'den gelen initial fiyata göre hangi paket seçildiğini bul
+    for (var pkg in _cachedHourlyPackages) {
+      final price = pkg["price"] ?? 0.0;
+      if ((_initialEstimatedPrice - price).abs() < 100) { // Küçük fark toleransı
+        final start = (pkg["start"] ?? 0.0).toInt();
+        final end = (pkg["end"] ?? 0.0).toInt();
+        return '$start-$end saat paketi';
+      }
+    }
+    
+    return 'Saatlik paket';
+  }
+
+  // ✅ GÜNCEL TUTAR (DİNAMİK - Backend'den direkt çek!)
   String _calculateDriverCurrentTotal() {
-    // ✅ _calculatedTotalPrice direkt kullan (zaten distance_pricing SABİT + bekleme dahil!)
-    // _calculateEarningsFromPanel() her 2 saniyede distance_pricing ile hesaplıyor
+    // ✅ MÜŞTERİ GİBİ: Backend'den gelen estimated_price kullan!
+    // Backend zaten KM + bekleme hesaplıyor (check_driver_active_ride.php)
+    final backendPrice = _currentRideStatus['estimated_price'] ?? 
+                         widget.rideDetails['estimated_price'] ?? 0.0;
+    final total = double.tryParse(backendPrice.toString()) ?? 0.0;
+    
+    // Eğer backend'den değer varsa onu kullan, yoksa local hesaplamayı kullan
+    if (total > 0) {
+      return total.toStringAsFixed(0);
+    }
+    
+    // Fallback: Local hesaplama
     return _calculatedTotalPrice.toStringAsFixed(0);
   }
 }

@@ -1849,7 +1849,11 @@ class _RideChatScreenState extends State<RideChatScreen> {
         return;
       }
       
-      if (await File(audioPath).exists()) {
+      // ✅ FIX: URL veya yerel dosya kontrolü
+      final isUrl = audioPath.startsWith('http://') || audioPath.startsWith('https://');
+      final canPlay = isUrl || await File(audioPath).exists();
+      
+      if (canPlay) {
         setState(() {
           _currentlyPlayingId = messageId;
           _playbackProgress = 0.0;
@@ -1874,9 +1878,10 @@ class _RideChatScreenState extends State<RideChatScreen> {
           }
         });
         
-        // Ses mesajı oynatılıyor
+        print('🎵 Ses çalınıyor: $audioPath');
       } else {
         // Ses dosyası bulunamadı
+        print('❌ Ses dosyası bulunamadı: $audioPath');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('❌ Ses dosyası bulunamadı')),
