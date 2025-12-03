@@ -273,18 +273,21 @@ class AdvancedNotificationService {
       // APNs token'ı al - Runner.entitlements ile artık çalışmalı
       String? apnsToken;
       
-      // 3 deneme yap (toplam 3 saniye)
-      for (int i = 0; i < 3; i++) {
+      // 🔥 10 deneme yap (toplam 10 saniye) - iOS APNs bazen yavaş!
+      print('📱 iOS APNs token (Vale) bekleniyor (max 10 saniye)...');
+      for (int i = 0; i < 10; i++) {
         apnsToken = await _messaging!.getAPNSToken();
         if (apnsToken != null) {
-          print('📱 APNs token (Vale) alındı: ${apnsToken.substring(0, 20)}...');
+          print('✅ APNs token (Vale) alındı (${i+1}. deneme): ${apnsToken.substring(0, 20)}...');
           break;
         }
+        print('   ⏳ APNs token (Vale) henüz yok - deneme ${i+1}/10');
         await Future.delayed(Duration(seconds: 1));
       }
       
       if (apnsToken == null) {
-        print('⚠️ APNs token (Vale) alınamadı - Runner.entitlements dosyasını kontrol edin!');
+        print('⚠️ APNs token (Vale) alınamadı 10 saniye içinde!');
+        print('   🔍 Kontrol et: Runner.entitlements, Provisioning Profile, Firebase Console APNs Key');
       }
       
       // FCM token al
