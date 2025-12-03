@@ -2696,13 +2696,34 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       print('💰 ŞOFÖR: Backend Estimated Price KULLANILIYOR: $totalEarningsToSend (eskisi _calculatedTotalPrice: $_calculatedTotalPrice)');
       print('🌐 ŞOFÖR: completeRide API çağrısı başlıyor...');
 
+      // ✅ KRİTİK: Bırakılan konum için GPS al - özel konum ücreti hesaplaması için!
+      double? dropoffLat = _driverLocation?.latitude;
+      double? dropoffLng = _driverLocation?.longitude;
+      
+      // Eğer _driverLocation null ise, anlık konum al
+      if (dropoffLat == null || dropoffLng == null) {
+        try {
+          final currentPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            timeLimit: const Duration(seconds: 5),
+          );
+          dropoffLat = currentPosition.latitude;
+          dropoffLng = currentPosition.longitude;
+          print('📍 ŞOFÖR: Anlık konum alındı - Lat: $dropoffLat, Lng: $dropoffLng');
+        } catch (e) {
+          print('⚠️ ŞOFÖR: Anlık konum alınamadı: $e');
+        }
+      }
+      
+      print('📍 ŞOFÖR: Bırakılan konum - Lat: $dropoffLat, Lng: $dropoffLng');
+
       final completionData = await RideService.completeRide(
         rideId: int.tryParse(rideId) ?? 0,
         totalKm: totalKm,
         waitingMinutes: _waitingMinutes,
         totalEarnings: totalEarningsToSend, // ✅ BRÜT fiyat (komisyon öncesi)
-        dropoffLat: _driverLocation?.latitude, // ✅ BIRAKILAN KONUM
-        dropoffLng: _driverLocation?.longitude, // ✅ BIRAKILAN KONUM
+        dropoffLat: dropoffLat, // ✅ BIRAKILAN KONUM - ÖZEL KONUM ÜCRETİ İÇİN!
+        dropoffLng: dropoffLng, // ✅ BIRAKILAN KONUM - ÖZEL KONUM ÜCRETİ İÇİN!
       );
       
       print('📦 ŞOFÖR: completeRide yanıtı: $completionData');
