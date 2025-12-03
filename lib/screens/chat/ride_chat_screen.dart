@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // 🔥 SERVICES IMPORT!
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:audio_session/audio_session.dart'; // ✅ HOPARLÖR AYARI İÇİN!
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -58,6 +59,24 @@ class _RideChatScreenState extends State<RideChatScreen> {
   }
   
   Future<void> _initializeAudio() async {
+    // ✅ Audio Session - Sesi hoparlörden çıkart (üst hoparlör değil!)
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(AudioSessionConfiguration(
+        avAudioSessionCategory: AVAudioSessionCategory.playback,
+        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.defaultToSpeaker,
+        avAudioSessionMode: AVAudioSessionMode.defaultMode,
+        androidAudioAttributes: const AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.music,
+          usage: AndroidAudioUsage.media,
+        ),
+        androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+      ));
+      print('✅ Audio session hoparlör moduna ayarlandı');
+    } catch (e) {
+      print('⚠️ Audio session ayarlanamadı: $e');
+    }
+    
     _audioRecorder = FlutterSoundRecorder();
     _audioPlayer = FlutterSoundPlayer();
     
