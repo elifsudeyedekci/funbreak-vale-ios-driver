@@ -202,20 +202,8 @@ void main() async {
     print('⚠️ ŞOFÖR Firebase init hatası (duplicate normal): $e');
   }
   
-  // ✅ TEST: Firebase başladı mı, token alınabiliyor mu?
-  print('🧪 TEST: Firebase Messaging test ediliyor...');
-  try {
-    final testToken = await FirebaseMessaging.instance.getToken().timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        print('⏱️ TEST: Token timeout!');
-        return null;
-      },
-    );
-    print('✅ TEST: Token result = ${testToken != null ? testToken.substring(0, 20) + "..." : "NULL"}');
-  } catch (testError) {
-    print('❌ TEST: getToken() exception: $testError');
-  }
+  // ✅ TOKEN ALMA AdvancedNotificationService TARAFINDAN YAPILACAK - RATE LIMIT ÖNLEMİ!
+  print('✅ Firebase başlatıldı - Token alma AdvancedNotificationService tarafından yapılacak');
   
   // GELİŞMİŞ SÜRÜCÜ BİLDİRİM SERVİSİ BAŞLAT!
   print('🔥 [ŞOFÖR] AdvancedNotificationService başlatılıyor...');
@@ -229,24 +217,8 @@ void main() async {
   
   await requestPermissions();
   
-  // ✅ FCM TOKEN'I ANA UYGULAMADA AL VE KAYDET - LOGIN'DEN BAĞIMSIZ!
-  print('🔔 MAIN: FCM Token sistemi başlatılıyor...');
-  
-  // Token alma ve kaydetme - ASYNC olmadan başlat (uygulama açılışını bloklamaması için)
-  Future.delayed(Duration(seconds: 2), () async {
-    try {
-      print('📱 MAIN: FCM Token alınıyor...');
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null && token.isNotEmpty) {
-        print('✅ MAIN: FCM Token alındı - ${token.substring(0, 20)}...');
-        await _saveFCMTokenToDatabase(token);
-      } else {
-        print('⚠️ MAIN: FCM Token null veya boş');
-      }
-    } catch (e) {
-      print('❌ MAIN: FCM Token alma hatası: $e');
-    }
-  });
+  // ✅ FCM TOKEN AdvancedNotificationService TARAFINDAN ALINACAK - RATE LIMIT ÖNLEMİ!
+  print('🔔 MAIN: FCM Token sistemi AdvancedNotificationService tarafından yönetiliyor');
   
   // Session servisini başlat
   await SessionService.initializeSession();
@@ -835,49 +807,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           print('✅ SÜRÜCÜ: Notification permission GRANTED!');
         }
         
-        // ⏱️ iOS'TA TOKEN ALMA 10 SANİYE SÜREBİLİR - AWAIT İLE BEKLEYELİM!
-        try {
-          final token = await messaging.getToken().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('⏱️ iOS FCM Token timeout - tekrar denenecek');
-              return null;
-            },
-          );
-          
-          print('📱 === SÜRÜCÜ FCM TOKEN KONTROL ===');
-          print('📱 FCM Token (ŞOFÖR): $token');
-          
-          // TOKEN KONTROL BİLGİSİ - TELEFONDA GÖREBİLİRSİNİZ!
-          if (token != null && token.isNotEmpty) {
-            print('🎉 ŞOFÖR: FCM Token BAŞARILI!');
-            print('🔔 ŞOFÖR: Firebase bağlantısı ÇALIŞIYOR');
-            print('📋 Token (ilk 20): ${token.substring(0, 20)}...');
-            print('🔥 ŞOFÖR TOPIC: funbreak_drivers subscription VAR');
-            print('💬 Panel duyuru gönderilince bu token\'a bildirim düşecek!');
-            
-            // FCM TOKEN'I DATABASE'E KAYDET!
-            await _saveFCMTokenToDatabase(token);
-          } else {
-            print('❌ ŞOFÖR: FCM Token alınamadı - KRITIK SORUN!');
-            print('🚨 ŞOFÖR: Firebase bağlantı sorunu - bildirimler düşmeyecek!');
-            
-            // 5 saniye sonra tekrar dene
-            Future.delayed(const Duration(seconds: 5), () async {
-              final retryToken = await messaging.getToken();
-              if (retryToken != null) {
-                print('🔄 ŞOFÖR: İkinci FCM token denemesi BAŞARILI!');
-                await _saveFCMTokenToDatabase(retryToken);
-          }
-            });
-          }
-        } catch (e) {
-          print('❌ === SÜRÜCÜ FCM TOKEN CRİTİK HATA ===');
-          print('🐛 HATA: $e');
-          print('💡 ÇÖZÜM: Internet/Firebase permission kontrol et');
-        }
-        
-        print('✅ ŞOFÖR Push notification handler\'ları TAMAMI kuruldu');
+        // ✅ TOKEN ALMA AdvancedNotificationService TARAFINDAN YAPILACAK - RATE LIMIT ÖNLEMİ!
+        print('✅ ŞOFÖR: Token alma AdvancedNotificationService tarafından yapılacak');
+        print('✅ ŞOFÖR Push notification handler\'ları kuruldu');
       } catch (e) {
         print('❌ ŞOFÖR notification setup hatası: $e');
       }
