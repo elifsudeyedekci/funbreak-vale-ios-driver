@@ -479,7 +479,7 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
             ),
             child: Column(
               children: [
-                // ✅ MESAFE ÜCRETİ (Backend'den distance_price geliyorsa kullan)
+                // ✅ MESAFE ÜCRETİ (Backend'den distance_price)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -488,13 +488,13 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                     Text(
-                      '₺${(double.tryParse(ride['distance_price']?.toString() ?? ride['base_price']?.toString() ?? ride['initial_estimated_price']?.toString() ?? ride['estimated_price']?.toString() ?? '0') ?? 0.0).toStringAsFixed(2)}',
+                      '₺${(double.tryParse(ride['distance_price']?.toString() ?? '0') ?? 0.0).toStringAsFixed(2)}',
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                   ],
                 ),
-                // BEKLEME ÜCRETİ (Backend'den gelen waiting_fee_amount)
-                if (ride['waiting_fee_amount'] != null && (double.tryParse(ride['waiting_fee_amount'].toString()) ?? 0.0) > 0)
+                // ✅ BEKLEME ÜCRETİ (Backend'den waiting_fee)
+                if ((double.tryParse(ride['waiting_fee']?.toString() ?? '0') ?? 0.0) > 0)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -503,7 +503,7 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                         style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                       ),
                       Text(
-                        '+₺${(double.tryParse(ride['waiting_fee_amount'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                        '+₺${(double.tryParse(ride['waiting_fee']?.toString() ?? '0') ?? 0.0).toStringAsFixed(2)}',
                         style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -523,8 +523,76 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
                       ),
                     ],
                   ),
-                // ✅ ÖZEL KONUM ÜCRETİ (Komisyonsuz - %100 sürücüye!)
-                if (ride['location_extra_fee'] != null && (double.tryParse(ride['location_extra_fee'].toString()) ?? 0.0) > 0)
+                // ✅ ALIŞ ÖZEL KONUM ÜCRETİ (Komisyonsuz - %100 sürücüye!)
+                if (ride['pickup_location_fee'] != null && (double.tryParse(ride['pickup_location_fee'].toString()) ?? 0.0) > 0)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 14, color: Colors.blue[700]),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Alış Özel Konum${(ride['pickup_location_name']?.toString() ?? '').isNotEmpty ? " (${ride['pickup_location_name']})" : ""} (Komisyonsuz):',
+                                style: TextStyle(fontSize: 10, color: Colors.blue[700], fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '+₺${(double.tryParse(ride['pickup_location_fee'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                          style: TextStyle(fontSize: 11, color: Colors.blue[700], fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                // ✅ BIRAKIŞ ÖZEL KONUM ÜCRETİ (Komisyonsuz - %100 sürücüye!)
+                if (ride['dropoff_location_fee'] != null && (double.tryParse(ride['dropoff_location_fee'].toString()) ?? 0.0) > 0)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.green[200]!),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 14, color: Colors.green[700]),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Bırakış Özel Konum${(ride['dropoff_location_name']?.toString() ?? '').isNotEmpty ? " (${ride['dropoff_location_name']})" : ""} (Komisyonsuz):',
+                                style: TextStyle(fontSize: 10, color: Colors.green[700], fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '+₺${(double.tryParse(ride['dropoff_location_fee'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                          style: TextStyle(fontSize: 11, color: Colors.green[700], fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                // ✅ FALLBACK: Eski sistemde toplam özel konum (ayrı yoksa)
+                if ((ride['pickup_location_fee'] == null || (double.tryParse(ride['pickup_location_fee'].toString()) ?? 0.0) == 0) &&
+                    (ride['dropoff_location_fee'] == null || (double.tryParse(ride['dropoff_location_fee'].toString()) ?? 0.0) == 0) &&
+                    ride['location_extra_fee'] != null && (double.tryParse(ride['location_extra_fee'].toString()) ?? 0.0) > 0)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
