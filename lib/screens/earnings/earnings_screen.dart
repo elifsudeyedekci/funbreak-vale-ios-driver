@@ -479,16 +479,16 @@ class _EarningsScreenState extends State<EarningsScreen> with SingleTickerProvid
             ),
             child: Column(
               children: [
-                // TABAN ÜCRET
+                // ✅ MESAFE ÜCRETİ (Backend'den distance_price geliyorsa kullan)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Taban Ücret:',
+                      'Yolculuk Ücreti:',
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                     Text(
-                      '₺${(ride['initial_estimated_price'] ?? ride['estimated_price'] ?? 0).toStringAsFixed(2)}',
+                      '₺${(double.tryParse(ride['distance_price']?.toString() ?? ride['base_price']?.toString() ?? ride['initial_estimated_price']?.toString() ?? ride['estimated_price']?.toString() ?? '0') ?? 0.0).toStringAsFixed(2)}',
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                   ],

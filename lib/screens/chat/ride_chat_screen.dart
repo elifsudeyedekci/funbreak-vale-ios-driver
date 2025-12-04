@@ -59,20 +59,22 @@ class _RideChatScreenState extends State<RideChatScreen> {
   }
   
   Future<void> _initializeAudio() async {
-    // ✅ Audio Session - Sesi hoparlörden çıkart (üst hoparlör değil!)
+    // ✅ Audio Session - Sesi NORMAL HOPARLÖRDEN çıkart (üst hoparlör değil!)
     try {
       final session = await AudioSession.instance;
       await session.configure(AudioSessionConfiguration(
-        avAudioSessionCategory: AVAudioSessionCategory.playback,
-        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.defaultToSpeaker,
-        avAudioSessionMode: AVAudioSessionMode.defaultMode,
+        avAudioSessionCategory: AVAudioSessionCategory.playAndRecord, // ✅ Kayıt + Çalma
+        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.defaultToSpeaker | 
+                                        AVAudioSessionCategoryOptions.allowBluetooth, // ✅ HOPARLÖR + Bluetooth
+        avAudioSessionMode: AVAudioSessionMode.spokenAudio, // ✅ Konuşma için optimize
         androidAudioAttributes: const AndroidAudioAttributes(
-          contentType: AndroidAudioContentType.music,
-          usage: AndroidAudioUsage.media,
+          contentType: AndroidAudioContentType.speech, // ✅ Konuşma içeriği
+          usage: AndroidAudioUsage.media, // ✅ Medya çıkışı (hoparlör)
         ),
         androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
       ));
-      print('✅ Audio session hoparlör moduna ayarlandı');
+      await session.setActive(true); // ✅ Session'ı aktive et
+      print('✅ Audio session HOPARLÖR moduna ayarlandı (playAndRecord + defaultToSpeaker)');
     } catch (e) {
       print('⚠️ Audio session ayarlanamadı: $e');
     }
@@ -82,6 +84,9 @@ class _RideChatScreenState extends State<RideChatScreen> {
     
     await _audioRecorder!.openRecorder();
     await _audioPlayer!.openPlayer();
+    
+    // ✅ Player'ı hoparlöre zorla
+    await _audioPlayer!.setVolume(1.0);
     
     // Ses kayıt sistemi başlatıldı
   }
@@ -1855,7 +1860,18 @@ class _RideChatScreenState extends State<RideChatScreen> {
   }
   
   Future<void> _playAudio(String? audioPath, [String? messageId]) async {
-    if (audioPath == null) return;
+    // ✅ Boş veya null path kontrolü
+    if (audioPath == null || audioPath.isEmpty) {
+      print('❌ Ses yolu boş veya null');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Ses dosyası bulunamadı')),
+        );
+      }
+      return;
+    }
+    
+    print('🎵 Ses çalma isteği: $audioPath');
     
     try {
       // Aynı mesaj çalıyorsa durdur
@@ -1868,15 +1884,33 @@ class _RideChatScreenState extends State<RideChatScreen> {
         return;
       }
       
-      // ✅ FIX: URL veya yerel dosya kontrolü
+      // ✅ FIX: URL kontrolü - HTTP veya HTTPS ile başlıyorsa direkt çal
       final isUrl = audioPath.startsWith('http://') || audioPath.startsWith('https://');
-      final canPlay = isUrl || await File(audioPath).exists();
+      
+      // URL ise direkt çal (File.exists kontrolü yapma!)
+      // Yerel dosya ise exists kontrolü yap
+      bool canPlay = false;
+      if (isUrl) {
+        canPlay = true;
+        print('🌐 URL ses dosyası tespit edildi - direkt çalınacak');
+      } else {
+        canPlay = await File(audioPath).exists();
+        print('📁 Yerel dosya kontrolü: ${canPlay ? "MEVCUT" : "YOK"}');
+      }
       
       if (canPlay) {
         setState(() {
           _currentlyPlayingId = messageId;
           _playbackProgress = 0.0;
         });
+        
+        // ✅ Session'ı aktive et (her çalmadan önce)
+        try {
+          final session = await AudioSession.instance;
+          await session.setActive(true);
+        } catch (e) {
+          print('⚠️ Audio session aktive edilemedi: $e');
+        }
         
         await _audioPlayer!.startPlayer(
           fromURI: audioPath,
@@ -1900,7 +1934,7 @@ class _RideChatScreenState extends State<RideChatScreen> {
         print('🎵 Ses çalınıyor: $audioPath');
       } else {
         // Ses dosyası bulunamadı
-        print('❌ Ses dosyası bulunamadı: $audioPath');
+        print('❌ Ses dosyası bulunamadı veya erişilemez: $audioPath');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('❌ Ses dosyası bulunamadı')),
@@ -1908,7 +1942,12 @@ class _RideChatScreenState extends State<RideChatScreen> {
         }
       }
     } catch (e) {
-      // Ses oynatma hatası: $e
+      print('❌ Ses oynatma hatası: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Ses oynatma hatası: $e')),
+        );
+      }
     }
   }
   

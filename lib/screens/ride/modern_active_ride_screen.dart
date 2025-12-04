@@ -2822,6 +2822,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
         (_calculatedTotalPrice > 0 ? _calculatedTotalPrice : (_estimatedEarnings + _waitingFee));
     final driverNet = double.tryParse(completionData['driver_net']?.toString() ?? '0') ?? _estimatedEarnings;
     final customerName = widget.rideDetails['customer_name'] ?? 'Müşteri';
+    
+    // ✅ AYRIŞTRILMIŞ FİYAT BİLGİLERİ
+    final distancePrice = double.tryParse(completionData['distance_price']?.toString() ?? 
+                                          completionData['base_price']?.toString() ?? '0') ?? 0.0;
+    final waitingFeeFromBackend = double.tryParse(completionData['waiting_fee']?.toString() ?? '0') ?? 0.0;
+    final locationExtraFee = double.tryParse(completionData['location_extra_fee']?.toString() ?? '0') ?? 0.0;
+    final totalKm = double.tryParse(completionData['total_km']?.toString() ?? '0') ?? 0.0;
+    final waitingMinutes = completionData['waiting_minutes'] ?? _waitingMinutes;
 
     await showDialog(
       context: context,
@@ -2829,24 +2837,92 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Ödeme Onayı', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Color(0xFFFFD700), size: 28),
+            SizedBox(width: 10),
+            Text('Yolculuk Özeti', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Müşteri: $customerName', style: const TextStyle(color: Colors.white70)),
-            const SizedBox(height: 12),
-            Text('Toplam Tutar: ₺${totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const Divider(color: Colors.white24, height: 20),
+            
+            // Mesafe ve süre
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('📏 Mesafe:', style: TextStyle(color: Colors.white70)),
+                Text('${totalKm.toStringAsFixed(1)} km', style: const TextStyle(color: Colors.white)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('⏰ Bekleme:', style: TextStyle(color: Colors.white70)),
+                Text('$waitingMinutes dk', style: const TextStyle(color: Colors.white)),
+              ],
+            ),
+            const Divider(color: Colors.white24, height: 20),
+            
+            // Fiyat detayları
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('🚗 Yolculuk Ücreti:', style: TextStyle(color: Colors.white70)),
+                Text('₺${distancePrice.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white)),
+              ],
+            ),
+            if (waitingFeeFromBackend > 0) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('⏳ Bekleme Ücreti:', style: TextStyle(color: Colors.white70)),
+                  Text('₺${waitingFeeFromBackend.toStringAsFixed(0)}', style: const TextStyle(color: Colors.white)),
+                ],
+              ),
+            ],
+            if (locationExtraFee > 0) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('🗺️ Özel Konum:', style: TextStyle(color: Colors.white70)),
+                  Text('₺${locationExtraFee.toStringAsFixed(0)}', style: const TextStyle(color: Colors.amber)),
+                ],
+              ),
+            ],
+            const Divider(color: Colors.white24, height: 20),
+            
+            // Toplam ve net kazanç
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('TOPLAM:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text('₺${totalAmount.toStringAsFixed(0)}', 
+                    style: const TextStyle(color: Color(0xFFFFD700), fontSize: 20, fontWeight: FontWeight.bold)),
+              ],
+            ),
             const SizedBox(height: 8),
-            Text('Sürücü Payı: ₺${driverNet.toStringAsFixed(2)}',
-                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('💰 Sizin Kazancınız:', style: TextStyle(color: Colors.green)),
+                Text('₺${driverNet.toStringAsFixed(0)}', 
+                    style: const TextStyle(color: Colors.green, fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tamam', style: TextStyle(color: Color(0xFFFFD700))),
+            child: const Text('Tamam', style: TextStyle(color: Color(0xFFFFD700), fontSize: 16)),
           ),
         ],
       ),
