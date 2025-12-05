@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../home/driver_home_screen.dart';
+import '../main/persistence_aware_driver_main.dart'; // SÖZLEŞME KONTROLÜ İÇİN!
 import 'login_screen.dart';
 import '../../services/ride_persistence_service.dart';
 import '../ride/modern_active_ride_screen.dart';
@@ -206,8 +207,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     // Giriş durumuna göre yönlendir
     if (_isLoggedIn) {
-      print('✅ [ŞOFÖR] Giriş yapılmış - Ana sayfaya yönlendiriliyor');
-      return const DriverHomeScreen();
+      print('✅ [ŞOFÖR] Giriş yapılmış - Sözleşme kontrolü yapılacak');
+      // SÖZLEŞME KONTROLÜ İÇİN PersistenceAwareDriverMainScreen KULLAN!
+      return const PersistenceAwareDriverMainScreen();
     } else {
       print('ℹ️ [ŞOFÖR] Giriş yapılmamış - Login sayfasına yönlendiriliyor');
       return const LoginScreen();

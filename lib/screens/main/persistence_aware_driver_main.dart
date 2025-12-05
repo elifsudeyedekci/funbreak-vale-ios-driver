@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../services/ride_persistence_service.dart';
 import '../ride/modern_active_ride_screen.dart';
 import '../home/driver_home_screen.dart';
 import '../legal/driver_legal_consent_screen.dart';
+import '../legal/driver_contract_update_screen.dart';  // YENİ: Sözleşme güncelleme ekranı
 
 class PersistenceAwareDriverMainScreen extends StatefulWidget {
   const PersistenceAwareDriverMainScreen({Key? key}) : super(key: key);
@@ -15,8 +18,10 @@ class PersistenceAwareDriverMainScreen extends StatefulWidget {
 class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDriverMainScreen> {
   bool _checkingConsents = true;
   bool _showConsentScreen = false;
+  bool _showUpdateScreen = false;  // YENİ: Sözleşme güncelleme ekranı
   int _driverId = 0;
   String _driverName = '';
+  List<Map<String, dynamic>> _pendingContracts = [];  // YENİ: Bekleyen sözleşmeler
   
   @override
   void initState() {
@@ -26,18 +31,16 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
     _checkLegalConsents();
   }
   
-  /// SÖZLEŞME ONAY KONTROLÜ - İLK GİRİŞTE ZORUNLU!
+  /// SÖZLEŞME ONAY KONTROLÜ - BACKEND VERSİYON KONTROLÜ İLE!
   Future<void> _checkLegalConsents() async {
     try {
-      print('📋 [SÜRÜCÜ] Sözleşme onay kontrolü yapılıyor...');
+      print('📋 [SÜRÜCÜ] Sözleşme onay kontrolü yapılıyor (Backend Versiyon Kontrolü)...');
       
       final prefs = await SharedPreferences.getInstance();
-      final consentsAccepted = prefs.getBool('driver_consents_accepted') ?? false;
       
       // Sürücü bilgilerini al
       _driverId = prefs.getInt('driver_id') ?? 0;
       if (_driverId == 0) {
-        // String olarak da dene
         final driverIdStr = prefs.getString('driver_id');
         if (driverIdStr != null) {
           _driverId = int.tryParse(driverIdStr) ?? 0;
@@ -45,44 +48,149 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
       }
       _driverName = prefs.getString('driver_name') ?? prefs.getString('name') ?? 'Vale';
       
-      print('📋 Sözleşme durumu: ${consentsAccepted ? "ONAYLANDI" : "ONAYLANMADI"}');
       print('📋 Driver ID: $_driverId, Name: $_driverName');
       
-      if (!consentsAccepted) {
-        // Sözleşmeler onaylanmamış - onay ekranını göster
-        print('⚠️ [SÜRÜCÜ] Sözleşmeler onaylanmamış - Onay ekranı gösteriliyor...');
-        setState(() {
-          _checkingConsents = false;
-          _showConsentScreen = true;
-        });
-      } else {
-        // Sözleşmeler onaylanmış - normal akışa devam
-        print('✅ [SÜRÜCÜ] Sözleşmeler zaten onaylanmış - Ana sayfaya geçiliyor');
+      if (_driverId <= 0) {
+        print('⚠️ [SÜRÜCÜ] Driver ID bulunamadı - normal akışa devam');
         setState(() {
           _checkingConsents = false;
           _showConsentScreen = false;
+          _showUpdateScreen = false;
+        });
+        _checkForActiveRideAsMain();
+        return;
+      }
+      
+      // 🔥 BACKEND'DEN SÖZLEŞME VERSİYON KONTROLÜ!
+      final contractCheck = await _checkContractUpdatesFromBackend();
+      
+      if (contractCheck['needs_update'] == true) {
+        _pendingContracts = List<Map<String, dynamic>>.from(contractCheck['pending_contracts'] ?? []);
+        
+        // İlk kez mi kabul ediyor yoksa güncelleme mi?
+        final hasAnyAccepted = contractCheck['has_any_accepted'] == true;
+        
+        if (hasAnyAccepted) {
+          // Daha önce kabul etmiş, şimdi güncelleme gerekiyor
+          print('🔄 [SÜRÜCÜ] Sözleşme GÜNCELLEMESİ gerekiyor - ${_pendingContracts.length} sözleşme');
+          setState(() {
+            _checkingConsents = false;
+            _showConsentScreen = false;
+            _showUpdateScreen = true;
+          });
+        } else {
+          // İlk kez kabul edecek
+          print('⚠️ [SÜRÜCÜ] İlk kez sözleşme onayı gerekiyor');
+          setState(() {
+            _checkingConsents = false;
+            _showConsentScreen = true;
+            _showUpdateScreen = false;
+          });
+        }
+      } else {
+        // Tüm sözleşmeler güncel
+        print('✅ [SÜRÜCÜ] Tüm sözleşmeler güncel - Ana sayfaya geçiliyor');
+        
+        // SharedPreferences'ı da güncelle (geriye dönük uyumluluk)
+        await prefs.setBool('driver_consents_accepted', true);
+        
+        setState(() {
+          _checkingConsents = false;
+          _showConsentScreen = false;
+          _showUpdateScreen = false;
         });
         
-        // ANA SAYFA AÇILIRKEN AKTİF YOLCULUK KONTROL! ✅
         _checkForActiveRideAsMain();
       }
       
     } catch (e) {
       print('❌ [SÜRÜCÜ] Sözleşme kontrol hatası: $e');
-      // Hata durumunda normal akışa devam
+      // Hata durumunda eski sisteme fallback
+      await _fallbackToLocalCheck();
+    }
+  }
+  
+  /// Backend'den sözleşme versiyon kontrolü
+  Future<Map<String, dynamic>> _checkContractUpdatesFromBackend() async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://admin.funbreakvale.com/api/check_contract_updates.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': _driverId,
+          'user_type': 'driver',
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data['success'] == true) {
+          final needsUpdate = data['needs_update'] == true;
+          final pendingContracts = data['pending_contracts'] ?? [];
+          final acceptedContracts = data['accepted_contracts'] ?? {};
+          
+          print('📜 [SÜRÜCÜ] Backend sözleşme kontrolü:');
+          print('   - Güncelleme gerekiyor: $needsUpdate');
+          print('   - Bekleyen: ${pendingContracts.length}');
+          print('   - Daha önce kabul edilmiş: ${acceptedContracts.length}');
+          
+          return {
+            'needs_update': needsUpdate,
+            'pending_contracts': pendingContracts,
+            'has_any_accepted': acceptedContracts.isNotEmpty,
+          };
+        }
+      }
+      
+      // API hatası durumunda lokal kontrol yap
+      throw Exception('API yanıt hatası');
+      
+    } catch (e) {
+      print('⚠️ [SÜRÜCÜ] Backend kontrol hatası: $e - Lokal kontrole fallback');
+      rethrow;
+    }
+  }
+  
+  /// Lokal kontrol (fallback)
+  Future<void> _fallbackToLocalCheck() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final consentsAccepted = prefs.getBool('driver_consents_accepted') ?? false;
+      
+      print('📋 [SÜRÜCÜ] Fallback: Lokal kontrol - ${consentsAccepted ? "ONAYLANMIŞ" : "ONAYLANMAMIŞ"}');
+      
+      if (!consentsAccepted) {
+        setState(() {
+          _checkingConsents = false;
+          _showConsentScreen = true;
+          _showUpdateScreen = false;
+        });
+      } else {
+        setState(() {
+          _checkingConsents = false;
+          _showConsentScreen = false;
+          _showUpdateScreen = false;
+        });
+        _checkForActiveRideAsMain();
+      }
+    } catch (e) {
+      print('❌ Fallback hatası: $e');
       setState(() {
         _checkingConsents = false;
         _showConsentScreen = false;
+        _showUpdateScreen = false;
       });
       _checkForActiveRideAsMain();
     }
   }
   
-  /// Sözleşmeler onaylandığında çağrılır
+  /// Sözleşmeler onaylandığında çağrılır (İlk kez veya güncelleme)
   void _onConsentsAccepted() {
     print('✅ [SÜRÜCÜ] TÜM SÖZLEŞMELER ONAYLANDI! Ana sayfaya geçiliyor...');
     setState(() {
       _showConsentScreen = false;
+      _showUpdateScreen = false;
     });
     _checkForActiveRideAsMain();
   }
@@ -154,7 +262,16 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
       );
     }
     
-    // Sözleşme onay ekranı göster
+    // 🆕 Sözleşme GÜNCELLEME ekranı göster (eski kullanıcı için yeni versiyon)
+    if (_showUpdateScreen && _pendingContracts.isNotEmpty) {
+      return DriverContractUpdateScreen(
+        driverId: _driverId,
+        pendingContracts: _pendingContracts,
+        onAllAccepted: _onConsentsAccepted,
+      );
+    }
+    
+    // İlk kez sözleşme onay ekranı göster (yeni kullanıcı)
     if (_showConsentScreen) {
       return DriverLegalConsentScreen(
         driverId: _driverId,

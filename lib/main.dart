@@ -842,7 +842,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
         
         if (authProvider.isLoggedIn) {
-          return const MainScreen();
+          // SÖZLEŞME KONTROLÜ İÇİN PersistenceAwareDriverMainScreen KULLAN!
+          return const PersistenceAwareDriverMainScreen();
         }
         
         return const LoginScreen();
