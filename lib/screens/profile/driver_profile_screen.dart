@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart'; // 🆕 Profil resmi yerel yedek için
 import 'dart:io';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,8 +38,31 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     _emailController.text = authProvider.userEmail ?? '';
     _licenseController.text = 'B'; // Ehliyet türü
     
+    // 🆕 ÖNCE YEREL YEDEKTEN YÜKLE (hızlı)
+    await _loadLocalProfileImage();
+    
     // MEVCUT FOTOĞRAFI PANELDEN ÇEK!
     await _loadCurrentPhoto();
+  }
+  
+  // 🆕 YEREL PROFİL RESMİNİ YÜKLE
+  Future<void> _loadLocalProfileImage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedImagePath = prefs.getString('driver_profile_image_path');
+      
+      if (savedImagePath != null && savedImagePath.isNotEmpty) {
+        final savedFile = File(savedImagePath);
+        if (await savedFile.exists()) {
+          setState(() {
+            _profileImage = savedFile;
+          });
+          print('✅ SÜRÜCÜ PROFIL: Yerel yedek yüklendi: $savedImagePath');
+        }
+      }
+    } catch (e) {
+      print('⚠️ SÜRÜCÜ PROFIL: Yerel yedek yüklenemedi: $e');
+    }
   }
   
   Future<void> _loadCurrentPhoto() async {
@@ -89,14 +113,23 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       
       if (image == null) return;
       
-      // 2. FOTOĞRAFI HAZIRLA - KARE ŞEKLINDE CROP OLMADAN DA GÜZEL!
+      // 🆕 2. YEREL YEDEK KAYDET (uygulama kapatılsa bile korunsun)
+      final directory = await getApplicationDocumentsDirectory();
+      final String savedPath = '${directory.path}/driver_profile_image.jpg';
+      final File savedFile = await File(image.path).copy(savedPath);
+      
+      // SharedPreferences'a path'i kaydet
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('driver_profile_image_path', savedPath);
+      
+      // 3. FOTOĞRAFI HAZIRLA
       setState(() {
-        _profileImage = File(image.path);
+        _profileImage = savedFile;
       });
       
-      print('✅ Fotoğraf seçildi - otomatik yükleniyor!');
+      print('✅ Fotoğraf seçildi ve yerel yedek kaydedildi: $savedPath');
       
-      // OTOMATIK UPLOAD!
+      // 4. BACKEND'E UPLOAD!
       await _uploadProfilePhoto();
       
     } catch (e) {

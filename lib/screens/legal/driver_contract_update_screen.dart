@@ -470,7 +470,7 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
       // SharedPreferences'a kaydet (eski sistem ile uyumluluk)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('driver_consents_accepted', true);
-      await prefs.setString('driver_consents_version', '2.0');
+      await prefs.setString('driver_consents_version', '4.0');
       await prefs.setString('driver_consents_date', DateTime.now().toIso8601String());
 
       print('✅ TÜM VALE SÖZLEŞMELERİ ONAYLANDI!');
@@ -499,7 +499,7 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
     return {
       'platform': platform,
       'os_version': Platform.operatingSystemVersion,
-      'app_version': '2.0.0',
+      'app_version': '4.0.0',
       'device_fingerprint': fingerprint,
       'user_agent': 'FunBreak Vale Driver/$platform ${Platform.operatingSystemVersion}',
       'ip_address': 'auto',
@@ -525,7 +525,7 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
     return '''FUNBREAK VALE
 VALE (SÜRÜCÜ) KULLANIM KOŞULLARI SÖZLEŞMESİ
 
-Versiyon: 2.0 | Tarih: 28 Kasım 2025
+Versiyon: 4.0 | Tarih: 28 Kasım 2025
 
 1. TARAFLAR
 İşbu Sözleşme, Armağanevler Mah. Ortanca Sk. No: 69 İç Kapı No: 22 Ümraniye/İstanbul adresinde mukim, 0388195898700001 Mersis numaralı FUNBREAK GLOBAL TEKNOLOJİ LİMİTED ŞİRKETİ ("FunBreak Vale" veya "Şirket") ile FunBreak Vale mobil uygulaması üzerinden vale hizmeti veren bağımsız sürücü ("Vale") arasındadır.
@@ -590,7 +590,7 @@ Taraflardan herhangi biri 7 gün önceden yazılı bildirimle sözleşmeyi feshe
     return '''FUNBREAK VALE
 VALELER İÇİN KİŞİSEL VERİLERİN KORUNMASI AYDINLATMA METNİ
 
-Versiyon: 2.0 | Tarih: 28 Kasım 2025
+Versiyon: 4.0 | Tarih: 28 Kasım 2025
 
 VERİ SORUMLUSU:
 FUNBREAK GLOBAL TEKNOLOJİ LİMİTED ŞİRKETİ
@@ -633,7 +633,7 @@ D. HAKLARINIZ (KVKK m.11)
   String _getSpecialDataText() {
     return '''ÖZEL NİTELİKLİ KİŞİSEL VERİLERİN İŞLENMESİNE İLİŞKİN AÇIK RIZA BEYANI
 
-Versiyon: 2.0 | Tarih: 28 Kasım 2025
+Versiyon: 4.0 | Tarih: 28 Kasım 2025
 
 Ben, aşağıda belirtilen özel nitelikli kişisel verilerimin FunBreak Vale tarafından işlenmesine açık rızam ile onay veriyorum:
 
@@ -667,7 +667,7 @@ info@funbreakvale.com''';
   String _getOpenConsentText() {
     return '''AÇIK RIZA BEYANI
 
-Versiyon: 2.0 | Tarih: 28 Kasım 2025
+Versiyon: 4.0 | Tarih: 28 Kasım 2025
 
 FUNBREAK GLOBAL TEKNOLOJİ LİMİTED ŞİRKETİ'ne ("FunBreak Vale"),
 

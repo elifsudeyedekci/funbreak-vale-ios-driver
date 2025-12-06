@@ -1241,14 +1241,19 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
                 child: CircleAvatar(
                   radius: 19, // %25 küçültme (25->19)
                   backgroundColor: Colors.blue,
-                  child: Text(
-                    (widget.rideDetails['customer_name'] ?? 'M')[0].toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15, // %25 küçültme (20->15)
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  backgroundImage: _getCustomerPhotoUrl() != null 
+                      ? NetworkImage(_getCustomerPhotoUrl()!) 
+                      : null,
+                  child: _getCustomerPhotoUrl() == null 
+                      ? Text(
+                          (widget.rideDetails['customer_name'] ?? 'M')[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15, // %25 küçültme (20->15)
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
                 ),
               );
             },
@@ -1944,6 +1949,16 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     }
   }
   
+  // 🆕 Müşteri fotoğraf URL'sini al
+  String? _getCustomerPhotoUrl() {
+    final url = _currentRideStatus['customer_photo_url'] ?? 
+                widget.rideDetails['customer_photo_url'];
+    if (url != null && url.toString().isNotEmpty && url.toString() != 'null') {
+      return url.toString();
+    }
+    return null;
+  }
+
   Future<void> _updateRideStatus() async {
     try {
       print('🚗 [ŞOFÖR] Yolculuk durumu güncellemesi başlıyor...');
