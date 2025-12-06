@@ -22,11 +22,6 @@ class DynamicContactService {
     return '0533 448 82 53';
   }
   
-  static Future<void> initialize() async {
-    // Basit servis, initialize gerekmez
-    print('✅ DynamicContactService hazır');
-  }
-  
   static Future<Map<String, dynamic>> getSystemSettings() async {
     try {
       final response = await http.get(
