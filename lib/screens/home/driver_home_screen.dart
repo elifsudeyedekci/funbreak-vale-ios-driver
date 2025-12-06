@@ -19,6 +19,8 @@ import 'dart:convert';
 import 'widgets/driver_status_card.dart'; // YENİ WIDGET!
 import 'widgets/driver_toggle_section.dart'; // YENİ WIDGET!
 import '../earnings/earnings_screen.dart'; // KAZANÇ ANALİZİ EKRANI!
+import '../services/services_screen.dart'; // GEÇMİŞ YOLCULUKLAR!
+import '../settings/settings_screen.dart'; // AYARLAR!
 import 'package:url_launcher/url_launcher.dart'; // NAVİGASYON İÇİN!
 
 class DriverHomeScreen extends StatefulWidget {
@@ -1937,6 +1939,49 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
             ],
           );
         },
+      ),
+      // ALT BAR - ANA SAYFA, GEÇMİŞ YOLCULUKLAR, AYARLAR
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        elevation: 8,
+        currentIndex: 0,
+        onTap: (index) {
+          if (index == 1) {
+            // Geçmiş Yolculuklar - ServicesScreen'e git
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ServicesScreen()),
+            );
+          } else if (index == 2) {
+            // Ayarlar - SettingsScreen'e git
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFFFFD700),
+        unselectedItemColor: Colors.grey[600],
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            activeIcon: Icon(Icons.home),
+            label: 'Ana Sayfa',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            activeIcon: Icon(Icons.history),
+            label: 'Geçmiş Yolculuklar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            activeIcon: Icon(Icons.settings),
+            label: 'Ayarlar',
+          ),
+        ],
       ),
     );
   }

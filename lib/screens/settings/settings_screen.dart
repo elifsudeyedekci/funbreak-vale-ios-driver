@@ -6,7 +6,11 @@ import '../profile/driver_profile_screen.dart';
 import '../../services/dynamic_contact_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
+import '../home/driver_home_screen.dart';
+import '../services/services_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -22,6 +26,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _whatsappNumber;
   String? _driverName;
   String? _driverIban;
+  String? _localProfileImagePath; // YEREL PROFİL FOTOĞRAFI
+  String? _backendProfilePhotoUrl; // BACKEND PROFİL FOTOĞRAFI
   final TextEditingController _ibanController = TextEditingController();
 
   @override
@@ -30,6 +36,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
     _loadContactInfo();
     _loadDriverInfo();
+    _loadProfilePhoto(); // PROFİL FOTOĞRAFI YÜKLE
+  }
+  
+  // PROFİL FOTOĞRAFI KAYNAĞINI BELİRLE
+  ImageProvider? _getProfileImage() {
+    // Öncelik: 1. Backend URL, 2. Yerel dosya
+    if (_backendProfilePhotoUrl != null && _backendProfilePhotoUrl!.isNotEmpty) {
+      return NetworkImage(_backendProfilePhotoUrl!);
+    }
+    if (_localProfileImagePath != null && _localProfileImagePath!.isNotEmpty) {
+      final file = File(_localProfileImagePath!);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+    }
+    return null;
+  }
+  
+  // PROFİL FOTOĞRAFINI YEREL + BACKEND'DEN YÜKLE
+  Future<void> _loadProfilePhoto() async {
+    try {
+      // 1. Önce yerel yedekten kontrol et
+      final directory = await getApplicationDocumentsDirectory();
+      final localPath = '${directory.path}/driver_profile_image.jpg';
+      final localFile = File(localPath);
+      
+      if (await localFile.exists()) {
+        debugPrint('✅ SÜRÜCÜ AYARLAR: Yerel profil fotoğrafı bulundu');
+        if (mounted) {
+          setState(() {
+            _localProfileImagePath = localPath;
+          });
+        }
+      }
+      
+      // 2. Backend'den de çekmeyi dene
+      final prefs = await SharedPreferences.getInstance();
+      final driverId = prefs.getString('driver_id') ?? prefs.getString('admin_user_id');
+      
+      if (driverId != null) {
+        debugPrint('📸 SÜRÜCÜ AYARLAR: Backend\'den fotoğraf çekiliyor - ID: $driverId');
+        
+        final response = await http.get(
+          Uri.parse('https://admin.funbreakvale.com/api/get_driver_photo.php?driver_id=$driverId'),
+        ).timeout(const Duration(seconds: 10));
+        
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true && data['photo_url'] != null && data['photo_url'].toString().isNotEmpty) {
+            debugPrint('✅ SÜRÜCÜ AYARLAR: Backend fotoğrafı alındı: ${data['photo_url']}');
+            if (mounted) {
+              setState(() {
+                _backendProfilePhotoUrl = data['photo_url'];
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ SÜRÜCÜ AYARLAR: Profil fotoğrafı yükleme hatası: $e');
+    }
   }
   
   @override
@@ -119,8 +186,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // GERİ BUTONU KALDIRILDI
         title: const Text('Ayarlar'),
         centerTitle: true,
+      ),
+      // ALT BAR
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        elevation: 8,
+        currentIndex: 2, // Ayarlar seçili
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+            );
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ServicesScreen()),
+            );
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFFFFD700),
+        unselectedItemColor: Colors.grey[600],
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Ana Sayfa',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'Geçmiş Yolculuklar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Ayarlar',
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -155,16 +261,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Column(
             children: [
-              // PROFiL FOTO - GERÇEK FOTO VARSA GÖSTER
+              // PROFiL FOTO - YEREL VEYA BACKEND'DEN GÖSTER
               CircleAvatar(
                 radius: 40,
                 backgroundColor: const Color(0xFFFFD700),
-                backgroundImage: authProvider.currentUser?['photo_url'] != null && 
-                                authProvider.currentUser!['photo_url'].isNotEmpty
-                    ? NetworkImage(authProvider.currentUser!['photo_url'])
-                    : null,
-                child: authProvider.currentUser?['photo_url'] == null || 
-                       authProvider.currentUser!['photo_url'].isEmpty
+                backgroundImage: _getProfileImage(),
+                child: _getProfileImage() == null
                     ? const Icon(
                         Icons.person,
                         size: 40,

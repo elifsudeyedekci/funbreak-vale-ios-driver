@@ -6,6 +6,8 @@ import 'dart:math' as math;
 import '../../providers/driver_ride_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/ride.dart';
+import '../home/driver_home_screen.dart';
+import '../settings/settings_screen.dart';
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({Key? key}) : super(key: key);
@@ -268,6 +270,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
+        automaticallyImplyLeading: false, // GERİ BUTONU KALDIRILDI
         title: const Text(
           'Geçmiş Yolculuklar',
           style: TextStyle(
@@ -285,6 +288,44 @@ class _ServicesScreenState extends State<ServicesScreen> {
               Icons.date_range,
               color: Color(0xFFFFD700),
             ),
+          ),
+        ],
+      ),
+      // ALT BAR
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        elevation: 8,
+        currentIndex: 1, // Geçmiş Yolculuklar seçili
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFFFFD700),
+        unselectedItemColor: Colors.grey[600],
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Ana Sayfa',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'Geçmiş Yolculuklar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Ayarlar',
           ),
         ],
       ),
@@ -706,6 +747,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
               
               const SizedBox(height: 12),
 
+              // Etiketler
               Wrap(
                 spacing: 8,
                 runSpacing: 8,

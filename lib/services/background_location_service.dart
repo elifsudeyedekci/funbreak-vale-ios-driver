@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 🚗 BACKGROUND LOCATION SERVICE
 /// Uygulama tamamen kapalı olsa bile arka planda konum takibi yapar
 /// KM hesaplama kesintisiz devam eder!
+@pragma('vm:entry-point')
 class BackgroundLocationService {
   static const String baseUrl = 'https://admin.funbreakvale.com/api';
   static bool _isInitialized = false;
@@ -20,6 +22,22 @@ class BackgroundLocationService {
       print('🚗 Background service zaten başlatılmış');
       return;
     }
+    
+    // ✅ Android için notification channel oluştur
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'location_tracking_channel', // id
+      'Konum Takibi', // title
+      description: 'Yolculuk sırasında konum takibi için kullanılır',
+      importance: Importance.low,
+    );
+    
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+    
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
     
     final service = FlutterBackgroundService();
     
