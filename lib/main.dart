@@ -249,13 +249,9 @@ Future<void> requestPermissions() async {
       print('✅ SÜRÜCÜ: Bildirim izni verildi - background bildirimler çalışacak!');
     }
     } else if (Platform.isIOS) {
-      // iOS'ta Firebase Messaging üzerinden izin istenir
-      final fcmSettings = await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-      print('📱 iOS SÜRÜCÜ Bildirim izni: ${fcmSettings.authorizationStatus}');
+      // ✅ iOS'ta Firebase permission AdvancedNotificationService tarafından isteniyor!
+      // "Too many server requests" hatasını önlemek için burada requestPermission() ÇAĞIRMIYORUZ!
+      print('📱 iOS SÜRÜCÜ: Bildirim izni AdvancedNotificationService tarafından istenecek');
     }
     
     // PİL OPTİMİZASYONU BYPASS - SADECE ANDROID!
@@ -783,32 +779,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           }
         });
         
-        // NOTIFICATION PERMISSION KONTROL - SÜRÜCÜ İÇİN ZORUNLU!
-        final permission = await messaging.requestPermission(
-          alert: true,
-          announcement: true,
-          badge: true,
-          carPlay: false,
-          criticalAlert: true,
-          provisional: false,
-          sound: true,
-        );
-        
-        print('📱 === SÜRÜCÜ NOTIFICATION PERMISSION ===');
-        print('   🔔 Authorization Status: ${permission.authorizationStatus}');
-        print('   📢 Alert: ${permission.alert}');
-        print('   🔊 Sound: ${permission.sound}');
-        print('   🏷️ Badge: ${permission.badge}');
-        
-        if (permission.authorizationStatus == AuthorizationStatus.denied) {
-          print('❌ SÜRÜCÜ: Notification permission DENIED!');
-          return; // Permission yoksa token alamazsın!
-        } else {
-          print('✅ SÜRÜCÜ: Notification permission GRANTED!');
-        }
-        
-        // ✅ TOKEN ALMA AdvancedNotificationService TARAFINDAN YAPILACAK - RATE LIMIT ÖNLEMİ!
-        print('✅ ŞOFÖR: Token alma AdvancedNotificationService tarafından yapılacak');
+        // ✅ NOTIFICATION PERMISSION + TOKEN ALMA → AdvancedNotificationService TARAFINDAN YAPILIYOR!
+        // "Too many server requests" hatasını önlemek için burada requestPermission() ÇAĞIRMIYORUZ!
+        print('✅ ŞOFÖR: Permission ve token AdvancedNotificationService tarafından yapılacak');
         print('✅ ŞOFÖR Push notification handler\'ları kuruldu');
       } catch (e) {
         print('❌ ŞOFÖR notification setup hatası: $e');
