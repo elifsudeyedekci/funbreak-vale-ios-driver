@@ -4,6 +4,12 @@ import 'package:http/http.dart' as http;
 class DynamicContactService {
   static const String baseUrl = 'https://admin.funbreakvale.com/api';
   
+  // Initialize fonksiyonu - main.dart'tan çağrılıyor
+  static Future<void> initialize() async {
+    // Şimdilik boş - gerekirse backend'den ayarları çekebilir
+    print('✅ DynamicContactService initialized');
+  }
+  
   static String getSupportPhone() {
     return '0533 448 82 53';
   }
