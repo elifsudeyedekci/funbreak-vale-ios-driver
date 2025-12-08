@@ -74,6 +74,16 @@
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Yeni yolculuk talepleri, müşteri mesajları ve önemli bildirimler için bildirim izni gerekiyor. Talep geldiğinde anında haberdar olmanız önemlidir.</string>
 	
+	<!-- 🔥 FIREBASE SWIZZLING KAPAT - embedded.mobileprovision sorunu için! -->
+	<!-- TestFlight/App Store build'lerinde mobileprovision kaldırılıyor -->
+	<!-- Bu flag ile APNs token'ı manuel yönetiyoruz -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	
+	<!-- 🔥 Firebase Messaging Auto Init - Manuel kontrol -->
+	<key>FirebaseMessagingAutoInitEnabled</key>
+	<true/>
+	
 	<!-- ⚠️ ARKA PLAN MODLARı - KONUM + BİLDİRİM + FETCH -->
 	<key>UIBackgroundModes</key>
 	<array>

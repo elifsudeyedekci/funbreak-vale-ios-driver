@@ -2,7 +2,7 @@ name: funbreak_vale_driver
 description: "FunBreak Vale Driver App"
 publish_to: 'none'
 
-version: 1.4.8+135
+version: 1.4.8+136
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
