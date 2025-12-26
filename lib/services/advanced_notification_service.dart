@@ -172,13 +172,34 @@ class AdvancedNotificationService {
       }
       
       print('🔑 [VALE FCM] Token alınıyor (tek deneme)...');
-      final token = await _messaging!.getToken().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('⏱️ [VALE FCM] Token alma timeout (10s)');
-          return null;
-        },
-      );
+      String? token;
+      
+      try {
+        token = await _messaging!.getToken().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('⏱️ [VALE FCM] Token alma timeout (10s)');
+            return null;
+          },
+        );
+      } catch (tokenError) {
+        print('⚠️ [VALE FCM] İlk token denemesi başarısız: $tokenError');
+        
+        // Firebase Installations sıfırla ve tekrar dene
+        print('🔄 [VALE FCM] Firebase Installations sıfırlanıyor...');
+        try {
+          await _messaging!.deleteToken();
+          await Future.delayed(const Duration(seconds: 2));
+          
+          print('🔑 [VALE FCM] Token tekrar alınıyor...');
+          token = await _messaging!.getToken().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => null,
+          );
+        } catch (retryError) {
+          print('❌ [VALE FCM] İkinci deneme de başarısız: $retryError');
+        }
+      }
       
       if (token == null) {
         print('❌ [VALE FCM] Token alınamadı');
