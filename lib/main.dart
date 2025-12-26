@@ -238,21 +238,10 @@ void main() async {
 // Basit ve hızlı izin sistemi
 Future<void> requestPermissions() async {
   try {
-    // SÜRÜCÜ İÇİN KRİTİK BILDIRIM İZINLERI (Platform-aware!)
-    if (Platform.isAndroid) {
-    final notificationStatus = await Permission.notification.request();
-      print('📱 Android SÜRÜCÜ Bildirim izni: $notificationStatus');
-    
-    if (notificationStatus.isDenied) {
-      print('❌ SÜRÜCÜ: Bildirim izni reddedildi - background bildirimler çalışmayacak!');
-    } else {
-      print('✅ SÜRÜCÜ: Bildirim izni verildi - background bildirimler çalışacak!');
-    }
-    } else if (Platform.isIOS) {
-      // ✅ iOS'ta Firebase permission AdvancedNotificationService tarafından isteniyor!
-      // "Too many server requests" hatasını önlemek için burada requestPermission() ÇAĞIRMIYORUZ!
-      print('📱 iOS SÜRÜCÜ: Bildirim izni AdvancedNotificationService tarafından istenecek');
-    }
+    // 🔥 BİLDİRİM İZNİ BURADA İSTENMİYOR!
+    // AdvancedNotificationService.registerFcmToken() içinde isteniyor (login sonrası)
+    // Bu sayede izin 2 kere istenmez
+    print('📱 SÜRÜCÜ: Bildirim izni login sonrası istenecek');
     
     // PİL OPTİMİZASYONU BYPASS - SADECE ANDROID!
     if (Platform.isAndroid) {
@@ -1001,20 +990,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (_permissionsChecked) return;
     
     try {
-      // Bildirim izni kontrol et (Platform-aware!)
-      if (Platform.isAndroid) {
-      var notificationStatus = await Permission.notification.status;
-      if (notificationStatus.isDenied) {
-        await _requestPermissionWithDialog('Bildirim', Permission.notification);
-        }
-      } else if (Platform.isIOS) {
-        // iOS'ta Firebase Messaging ile kontrol
-        final fcmSettings = await FirebaseMessaging.instance.getNotificationSettings();
-        if (fcmSettings.authorizationStatus != AuthorizationStatus.authorized &&
-            fcmSettings.authorizationStatus != AuthorizationStatus.provisional) {
-          await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
-        }
-      }
+      // 🔥 BİLDİRİM İZNİ BURADA İSTENMİYOR!
+      // AdvancedNotificationService.registerFcmToken() içinde isteniyor (login sonrası)
+      // Bu sayede izin 2 kere istenmez
+      print('📱 Bildirim izni login sonrası istenecek');
       
       // KONUM İZNİ "HER ZAMAN" ZORUNLU KONTROL!
       LocationPermission locationPermission = await Geolocator.checkPermission();
@@ -1877,21 +1856,10 @@ Future<void> _checkPermissionsInBackground() async {
       print('📍 [ŞOFÖR] Konum izni istendi');
     }
     
-    // Bildirim izni (Platform-aware!)
-    if (Platform.isAndroid) {
-    final notificationStatus = await Permission.notification.status;
-    if (notificationStatus.isDenied) {
-      await Permission.notification.request();
-        print('🔔 [ŞOFÖR Android] Bildirim izni istendi');
-    }
-    } else if (Platform.isIOS) {
-      // iOS'ta Firebase Messaging ile kontrol
-      final fcmSettings = await FirebaseMessaging.instance.getNotificationSettings();
-      if (fcmSettings.authorizationStatus != AuthorizationStatus.authorized) {
-        await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
-        print('🔔 [ŞOFÖR iOS] Bildirim izni istendi');
-      }
-    }
+    // 🔥 BİLDİRİM İZNİ BURADA İSTENMİYOR!
+    // AdvancedNotificationService.registerFcmToken() içinde isteniyor (login sonrası)
+    // Bu sayede izin 2 kere istenmez
+    print('🔔 [ŞOFÖR] Bildirim izni login sonrası istenecek');
     
     // Pil optimizasyonu bypass (SADECE ANDROID!)
     if (Platform.isAndroid) {

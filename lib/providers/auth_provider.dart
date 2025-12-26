@@ -123,6 +123,7 @@ class AuthProvider with ChangeNotifier {
             // Session kaydet
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('admin_user_id', user['id'].toString());
+            await prefs.setString('driver_id', user['id'].toString()); // FCM için eklendi!
             await prefs.setString('user_email', user['email']);
             await prefs.setString('user_name', user['name']);
             await prefs.setString('user_phone', user['phone'] ?? '05555555555');
@@ -617,17 +618,42 @@ class AuthProvider with ChangeNotifier {
   }
   
   // ✅ FCM TOKEN GÜNCELLEME - LOGIN SONRASI OTOMATIK ÇAĞRILIR!
-  // ✅ RATE LIMIT HATASINI ÖNLEMEK İÇİN AdvancedNotificationService KULLANILIYOR!
+  // 🔥 V2.0 - RATE LIMIT SORUNU ÇÖZÜLDÜ!
   Future<void> _updateFCMToken() async {
-    print('🔔 iOS VALE (ŞOFÖR): _updateFCMToken() - AdvancedNotificationService kullanılıyor');
+    print('🔔 iOS VALE: _updateFCMToken() - V2.0 (Rate Limit Fix)');
     
     try {
-      // Token alma işlemi AdvancedNotificationService.initialize() tarafından yapılacak
-      // Bu fonksiyon sadece init çağırıyor - rate limit hatası önleniyor
-      await AdvancedNotificationService.initialize();
-      print('✅ ŞOFÖR FCM Token güncelleme AdvancedNotificationService tarafından yapılacak');
+      // Driver ID'yi al
+      final prefs = await SharedPreferences.getInstance();
+      final driverIdStr = prefs.getString('admin_user_id') ?? 
+                          prefs.getString('driver_id');
+      
+      if (driverIdStr == null || driverIdStr.isEmpty) {
+        print('❌ FCM: Driver ID bulunamadı - token kaydedilemedi');
+        return;
+      }
+      
+      final driverId = int.tryParse(driverIdStr);
+      if (driverId == null || driverId <= 0) {
+        print('❌ FCM: Geçersiz Driver ID: $driverIdStr');
+        return;
+      }
+      
+      print('🔔 FCM: Token kaydediliyor - Driver ID: $driverId');
+      
+      // 🔥 YENİ: registerFcmToken() kullan - TEK DENEME, RATE LIMIT YOK!
+      final success = await AdvancedNotificationService.registerFcmToken(
+        driverId, 
+        userType: 'driver',
+      );
+      
+      if (success) {
+        print('✅ FCM Token başarıyla kaydedildi!');
+      } else {
+        print('⚠️ FCM Token kaydedilemedi (ama uygulama çalışmaya devam edecek)');
+      }
     } catch (e) {
-      print('⚠️ ŞOFÖR FCM Token güncelleme hatası: $e');
+      print('⚠️ FCM Token güncelleme hatası: $e');
     }
   }
 } 

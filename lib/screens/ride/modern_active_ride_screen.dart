@@ -1959,7 +1959,14 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
     return null;
   }
 
+  // POLLING RACE CONDITION FIX
+  bool _isUpdating = false;
+
   Future<void> _updateRideStatus() async {
+    // ✅ RACE CONDITION ÖNLEME
+    if (_isUpdating) return;
+    _isUpdating = true;
+
     try {
       print('🚗 [ŞOFÖR] Yolculuk durumu güncellemesi başlıyor...');
 
@@ -2138,6 +2145,9 @@ class _ModernDriverActiveRideScreenState extends State<ModernDriverActiveRideScr
       _calculateEarnings();
     } catch (e) {
       print('❌ [ŞOFÖR] Yolculuk durumu güncelleme hatası: $e');
+    } finally {
+      // ✅ İŞLEM BİTTİ - BAYRAĞI İNDİR
+      _isUpdating = false;
     }
   }
   

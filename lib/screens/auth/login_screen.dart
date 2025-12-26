@@ -19,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
@@ -121,16 +121,86 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 
-                // Help Text
-                const Text(
-                  'Sadece yetkili vale sürücüleri giriş yapabilir',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                // Bilgilendirme Kutusu
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
                   ),
-                  textAlign: TextAlign.center,
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: Color(0xFFFFD700),
+                        size: 28,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Bu uygulama yalnızca FunBreak Vale tarafından sisteme kayıt edilmiş şoförler tarafından kullanılabilir.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white70,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Uygulamada "Üye Ol" seçeneği bulunmamaktadır.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Şoför başvurularınız veya kayıt talepleriniz için:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () async {
+                          // Telefon araması başlat
+                          final Uri phoneUri = Uri(scheme: 'tel', path: '05334488253');
+                          // launchUrl kullanılabilir veya sadece gösterim
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.phone, color: Color(0xFFFFD700), size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              '0533 448 82 53',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFFFFD700),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Teşekkür ederiz.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
