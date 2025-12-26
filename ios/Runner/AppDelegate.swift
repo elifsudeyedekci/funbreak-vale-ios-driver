@@ -48,30 +48,18 @@ import UserNotifications  // ⚠️ UserNotifications import!
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
   
-  // ⚠️ APNs Device Token Registration - PRODUCTION TYPE!
+  // ⚠️ APNs Device Token Registration - GPT FIX!
   override func application(_ application: UIApplication, 
                             didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-    super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-    
-    // 🔥 KRİTİK: APNs token'ı PRODUCTION type ile kaydet!
-    // Bu embedded.mobileprovision dosyası olmadan da çalışmasını sağlar!
-    // TestFlight/App Store build'lerinde mobileprovision kaldırılıyor
-    #if DEBUG
-    Messaging.messaging().setAPNSToken(deviceToken, type: .sandbox)
-    print("📱 ŞOFÖR APNs Token SANDBOX olarak kaydedildi (DEBUG)")
-    #else
-    Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
-    print("📱 ŞOFÖR APNs Token PRODUCTION olarak kaydedildi (RELEASE)")
-    #endif
+    // 🔥 KRİTİK SATIR - GPT önerisi: Property assignment (method call değil!)
+    // Bu Firebase'in APNs environment'ı otomatik detect etmesini sağlar
+    Messaging.messaging().apnsToken = deviceToken
     
     let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
     let token = tokenParts.joined()
-    print("📱 ŞOFÖR APNs Device Token registered: \(token.prefix(20))...")
-    #if DEBUG
-    print("✅ APNs token Firebase'e kaydedildi (ŞOFÖR) - Type: SANDBOX")
-    #else
-    print("✅ APNs token Firebase'e kaydedildi (ŞOFÖR) - Type: PRODUCTION")
-    #endif
+    print("📱 ŞOFÖR APNs Token Firebase'e kaydedildi: \(token.prefix(20))...")
+    
+    super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
   
   // ⚠️ APNs Registration Failure
