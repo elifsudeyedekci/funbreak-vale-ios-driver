@@ -382,7 +382,14 @@ class AuthProvider with ChangeNotifier {
           
           print('✅ Session geçerli - Otomatik giriş yapıldı: ${_driverName}');
           
-          // ✅ FCM main.dart'ta çalışacak - burada uğraşma!
+          // 🔥 AUTO-LOGIN DURUMUNDA DA FCM TOKEN KAYDET!
+          print('🔔 AUTO-LOGIN: FCM Token kaydediliyor...');
+          _updateFCMToken().then((_) {
+            print('✅ AUTO-LOGIN: FCM Token kaydedildi!');
+          }).catchError((e) {
+            print('⚠️ AUTO-LOGIN: FCM Token hatası: $e');
+          });
+          
           notifyListeners();
         } else {
           print('❌ Driver bilgileri bulunamadı');
