@@ -116,20 +116,20 @@ class AdvancedNotificationService {
   
   // 🔥 YENİ: FCM TOKEN KAYDETME - SADECE LOGIN SONRASI ÇAĞRILMALI!
   static Future<bool> registerFcmToken(int driverId, {String userType = 'driver'}) async {
-    print('🔔 [VALE FCM] registerFcmToken çağrıldı - Driver: $driverId');
+    // 🔥 RACE CONDITION FIX: Flag'i EN BAŞTA, senkron olarak kontrol et ve ayarla!
+    if (_fcmTokenRequested) {
+      print('⏳ [VALE FCM] Token zaten isteniyor - ATLANIYORUM (Driver: $driverId)');
+      return false;
+    }
+    _fcmTokenRequested = true; // HEMEN ayarla!
+    
+    print('🔔 [VALE FCM] registerFcmToken BAŞLADI - Driver: $driverId');
     
     if (_fcmTokenSentToServer && _cachedFcmToken != null) {
       print('✅ [VALE FCM] Token zaten backend\'e gönderildi - atlanıyor');
+      _fcmTokenRequested = false;
       return true;
     }
-    
-    if (_fcmTokenRequested) {
-      print('⏳ [VALE FCM] Token zaten isteniyor - bekleniyor...');
-      await Future.delayed(const Duration(seconds: 5));
-      return _cachedFcmToken != null;
-    }
-    
-    _fcmTokenRequested = true;
     
     try {
       print('📱 [VALE FCM] Bildirim izni isteniyor...');
