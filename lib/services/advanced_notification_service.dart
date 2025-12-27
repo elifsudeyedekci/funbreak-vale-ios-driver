@@ -2,6 +2,7 @@ import 'dart:io';  // ⚠️ PLATFORM CHECK!
 import 'dart:convert';
 import 'dart:typed_data'; // 🔥 Int64List için!
 import 'package:flutter/material.dart'; // COLOR İÇİN GEREKLİ!
+import 'package:flutter/services.dart'; // 🔥 MethodChannel için!
 import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -211,6 +212,17 @@ class AdvancedNotificationService {
         }
       } catch (tokenError) {
         print('⚠️ [VALE FCM] Token alma başarısız: $tokenError');
+        
+        // 🔍 NATIVE HATASI: Gerçek iOS hatasını al
+        if (Platform.isIOS) {
+          try {
+            const channel = MethodChannel('debug_fcm');
+            final nativeResult = await channel.invokeMethod('getNativeFcmToken');
+            print('🔍 [VALE NATIVE] Token: $nativeResult');
+          } catch (nativeError) {
+            print('🔍 [VALE NATIVE HATA] $nativeError');
+          }
+        }
       }
       
       // Token alınamadıysa - 2 DAKİKA SONRA OTOMATİK TEKRAR DENE!

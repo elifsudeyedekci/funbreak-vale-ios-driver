@@ -24,6 +24,33 @@ import UserNotifications  // ⚠️ UserNotifications import!
     // Flutter plugin registration
     GeneratedPluginRegistrant.register(with: self)
     
+    // 🔥 GPT DEBUG: MethodChannel - Native FCM token al!
+    let controller = window?.rootViewController as! FlutterViewController
+    let debugChannel = FlutterMethodChannel(name: "debug_fcm", binaryMessenger: controller.binaryMessenger)
+    
+    debugChannel.setMethodCallHandler { call, result in
+      if call.method == "getNativeFcmToken" {
+        print("📱 [VALE NATIVE CHANNEL] getNativeFcmToken çağrıldı")
+        Messaging.messaging().token { token, error in
+          if let error = error {
+            let nsError = error as NSError
+            print("❌ [VALE NATIVE CHANNEL] ERROR: \(error)")
+            print("❌ [VALE NATIVE CHANNEL] Domain: \(nsError.domain), Code: \(nsError.code)")
+            print("❌ [VALE NATIVE CHANNEL] UserInfo: \(nsError.userInfo)")
+            result(FlutterError(code: "NATIVE_FCM_ERROR", 
+                               message: "\(error.localizedDescription)", 
+                               details: "Domain: \(nsError.domain), Code: \(nsError.code), UserInfo: \(nsError.userInfo)"))
+          } else {
+            print("✅ [VALE NATIVE CHANNEL] TOKEN: \(token ?? "nil")")
+            result(token ?? "")
+          }
+        }
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    print("✅ ŞOFÖR debug_fcm MethodChannel kuruldu")
+    
     // ⚠️ Push notification setup (iOS 10+)
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
