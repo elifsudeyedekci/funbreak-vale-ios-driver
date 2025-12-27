@@ -471,7 +471,7 @@ class AdvancedNotificationService {
     
     // Yeni yolculuk talebi - RidePersistenceService'e kaydet
     if (message.data['type'] == 'new_ride_request') {
-      await RidePersistenceService.saveFromNotification(message.data);
+      await RidePersistenceService.savePendingRideRequest(message.data);
     }
     
     if (Platform.isAndroid) {
