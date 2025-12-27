@@ -20,9 +20,15 @@ class AdvancedNotificationService {
   static final Set<String> _processedMessageIds = {};
   static String? _cachedFcmToken;
   
-  // 🔥 YENİ: FCM token sadece 1 kez alınsın
-  static bool _fcmTokenRequested = false;
+  // 🔥 GPT FIX: Hard Guard + Cooldown!
+  static bool _inProgress = false;
+  static DateTime? _lastAttemptAt;
   static bool _fcmTokenSentToServer = false;
+  
+  // 🔄 OTOMATİK RETRY: Başarısız olunca 2dk sonra tekrar dene
+  static Timer? _retryTimer;
+  static int? _pendingDriverId;
+  static String? _pendingUserType;
   
   // SÜRÜCÜ BİLDİRİM TÜRLERİ
   static const Map<String, NotificationConfig> _driverNotifications = {
@@ -114,20 +120,33 @@ class AdvancedNotificationService {
     }
   }
   
-  // 🔥 YENİ: FCM TOKEN KAYDETME - SADECE LOGIN SONRASI ÇAĞRILMALI!
+  // 🔥 FCM TOKEN KAYDETME - SADECE LOGIN SONRASI ÇAĞRILMALI!
   static Future<bool> registerFcmToken(int driverId, {String userType = 'driver'}) async {
-    // 🔥 RACE CONDITION FIX: Flag'i EN BAŞTA, senkron olarak kontrol et ve ayarla!
-    if (_fcmTokenRequested) {
-      print('⏳ [VALE FCM] Token zaten isteniyor - ATLANIYORUM (Driver: $driverId)');
+    final now = DateTime.now();
+    
+    // 🔥 HARD GUARD: Aynı anda 2. çağrıyı engelle
+    if (_inProgress) {
+      print('⛔️ [VALE FCM] Guard: inProgress, SKIP - Driver: $driverId');
       return false;
     }
-    _fcmTokenRequested = true; // HEMEN ayarla!
+    
+    // 🔥 COOLDOWN: 2 dakika içinde tekrar deneme engelle
+    if (_lastAttemptAt != null && now.difference(_lastAttemptAt!).inSeconds < 120) {
+      final remaining = 120 - now.difference(_lastAttemptAt!).inSeconds;
+      print('⛔️ [VALE FCM] Guard: cooldown (${remaining}s kaldı), SKIP');
+      return false;
+    }
+    
+    // 🔒 KİLİTLE!
+    _inProgress = true;
+    _lastAttemptAt = now;
     
     print('🔔 [VALE FCM] registerFcmToken BAŞLADI - Driver: $driverId');
     
+    // Zaten başarıyla gönderilmişse tekrar gönderme
     if (_fcmTokenSentToServer && _cachedFcmToken != null) {
       print('✅ [VALE FCM] Token zaten backend\'e gönderildi - atlanıyor');
-      _fcmTokenRequested = false;
+      _inProgress = false;
       return true;
     }
     
@@ -144,7 +163,6 @@ class AdvancedNotificationService {
       if (settings.authorizationStatus != AuthorizationStatus.authorized &&
           settings.authorizationStatus != AuthorizationStatus.provisional) {
         print('❌ [VALE FCM] Bildirim izni reddedildi');
-        _fcmTokenRequested = false;
         return false;
       }
       
@@ -157,58 +175,48 @@ class AdvancedNotificationService {
         
         print('📱 [VALE FCM] iOS - APNs token bekleniyor...');
         String? apnsToken;
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
           apnsToken = await _messaging!.getAPNSToken();
           if (apnsToken != null) {
             print('✅ [VALE FCM] APNs token alındı (${i+1}. deneme)');
             break;
           }
-          await Future.delayed(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 500));
         }
         
         if (apnsToken == null) {
-          print('⚠️ [VALE FCM] APNs token 10 saniyede alınamadı');
+          print('⚠️ [VALE FCM] APNs token alınamadı');
         }
       }
       
-      // 🔥 GPT FIX: APNs → Firebase senkronizasyonu için 2sn bekle!
+      // APNs → Firebase senkronizasyonu için 2sn bekle
       print('⏳ [VALE FCM] APNs → Firebase senkronizasyonu için 2sn bekleniyor...');
       await Future.delayed(const Duration(seconds: 2));
       
-      // FCM Token al (5 DENEME + ARTAN BEKLEME!)
-      print('🔑 [VALE FCM] Token alınıyor (5 deneme)...');
+      // 🔥 TEK DENEME - Rate limit'i önle!
+      print('🔑 [VALE FCM] Token alınıyor (TEK DENEME)...');
       String? token;
       
-      for (int i = 0; i < 5; i++) {
-        try {
-          print('🔑 [VALE FCM] Deneme ${i + 1}/5...');
-          token = await _messaging!.getToken().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('⏱️ [VALE FCM] Deneme ${i + 1} timeout');
-              return null;
-            },
-          );
-          
-          if (token != null && token.isNotEmpty) {
-            print('✅ [VALE FCM] Token ${i + 1}. denemede alındı!');
-            break;
-          }
-        } catch (tokenError) {
-          print('⚠️ [VALE FCM] Deneme ${i + 1} başarısız: $tokenError');
-        }
+      try {
+        token = await _messaging!.getToken().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('⏱️ [VALE FCM] Token timeout');
+            return null;
+          },
+        );
         
-        // Her denemede artan bekleme (2s, 4s, 6s, 8s, 10s)
-        if (i < 4) {
-          final waitSeconds = 2 * (i + 1);
-          print('⏳ [VALE FCM] ${waitSeconds}sn bekleniyor...');
-          await Future.delayed(Duration(seconds: waitSeconds));
+        if (token != null && token.isNotEmpty) {
+          print('✅ [VALE FCM] Token alındı!');
         }
+      } catch (tokenError) {
+        print('⚠️ [VALE FCM] Token alma başarısız: $tokenError');
       }
       
+      // Token alınamadıysa - 2 DAKİKA SONRA OTOMATİK TEKRAR DENE!
       if (token == null || token.isEmpty) {
-        print('❌ [VALE FCM] 5 denemede de token alınamadı');
-        _fcmTokenRequested = false;
+        print('❌ [VALE FCM] Token alınamadı - 2 dakika sonra OTOMATİK tekrar denenecek');
+        _scheduleRetry(driverId, userType);
         return false;
       }
       
@@ -231,6 +239,7 @@ class AdvancedNotificationService {
         if (data['success'] == true) {
           print('✅ [VALE FCM] Token backend\'e kaydedildi!');
           _fcmTokenSentToServer = true;
+          _retryTimer?.cancel(); // Retry iptal
           await _subscribeToTopics();
           return true;
         } else {
@@ -246,12 +255,14 @@ class AdvancedNotificationService {
       print('❌ [VALE FCM] registerFcmToken hatası: $e');
       
       if (e.toString().contains('Too many') || e.toString().contains('server requests')) {
-        print('🛑 [VALE FCM] RATE LIMIT! 5 dakika bekleyin.');
+        print('🛑 [VALE FCM] RATE LIMIT! 2 dakika sonra tekrar denenecek.');
+        _scheduleRetry(driverId, userType);
       }
       
       return false;
     } finally {
-      _fcmTokenRequested = false;
+      // 🔓 KİLİDİ AÇ!
+      _inProgress = false;
     }
   }
   
@@ -259,9 +270,45 @@ class AdvancedNotificationService {
   
   static void resetTokenState() {
     _cachedFcmToken = null;
-    _fcmTokenRequested = false;
+    _inProgress = false;
+    _lastAttemptAt = null;
     _fcmTokenSentToServer = false;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _pendingDriverId = null;
+    _pendingUserType = null;
     print('🔄 [VALE FCM] Token durumu sıfırlandı');
+  }
+  
+  // 🔄 OTOMATİK RETRY: 2 dakika sonra tekrar dene
+  static void _scheduleRetry(int driverId, String userType) {
+    // Önceki timer'ı iptal et
+    _retryTimer?.cancel();
+    
+    // Bilgileri sakla
+    _pendingDriverId = driverId;
+    _pendingUserType = userType;
+    
+    // 2 dakika sonra tekrar dene
+    print('⏰ [VALE FCM] 2 dakika sonra otomatik retry planlandı...');
+    _retryTimer = Timer(const Duration(minutes: 2), () async {
+      print('🔄 [VALE FCM] OTOMATİK RETRY başlıyor...');
+      
+      // Cooldown'ı sıfırla (retry için)
+      _lastAttemptAt = null;
+      
+      // Tekrar dene
+      if (_pendingDriverId != null && _pendingUserType != null) {
+        final success = await registerFcmToken(_pendingDriverId!, userType: _pendingUserType!);
+        if (success) {
+          print('✅ [VALE FCM] OTOMATİK RETRY başarılı!');
+          _pendingDriverId = null;
+          _pendingUserType = null;
+        } else {
+          print('❌ [VALE FCM] OTOMATİK RETRY başarısız - tekrar planlanıyor...');
+        }
+      }
+    });
   }
   
   // ANDROID BİLDİRİM KANALLARI
