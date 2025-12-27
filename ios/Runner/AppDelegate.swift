@@ -48,16 +48,17 @@ import UserNotifications  // ⚠️ UserNotifications import!
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
   
-  // ⚠️ APNs Device Token Registration - GPT FIX!
+  // ⚠️ APNs Device Token Registration - TESTFLIGHT FIX!
   override func application(_ application: UIApplication, 
                             didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-    // 🔥 KRİTİK SATIR - GPT önerisi: Property assignment (method call değil!)
-    // Bu Firebase'in APNs environment'ı otomatik detect etmesini sağlar
-    Messaging.messaging().apnsToken = deviceToken
+    // 🔥 KRİTİK: TestFlight'ta embedded.mobileprovision YOK!
+    // Firebase ortamı otomatik belirleyemiyor, PRODUCTION olarak belirtmeliyiz!
+    // TestFlight = Production APNs ortamı kullanır!
+    Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
     
     let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
     let token = tokenParts.joined()
-    print("📱 ŞOFÖR APNs Token Firebase'e kaydedildi: \(token.prefix(20))...")
+    print("📱 ŞOFÖR APNs Token Firebase'e PRODUCTION olarak kaydedildi: \(token.prefix(20))...")
     
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
