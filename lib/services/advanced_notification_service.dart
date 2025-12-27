@@ -173,29 +173,63 @@ class AdvancedNotificationService {
           badge: true,
           sound: true,
         );
-        
-        print('📱 [VALE FCM] iOS - APNs token bekleniyor...');
+      }
+      
+      // 🍎 iOS: DOĞRUDAN APNs TOKEN KULLAN (Firebase bypass!)
+      if (Platform.isIOS) {
+        print('🍎 [VALE APNs] iOS - APNs token alınıyor (Firebase bypass)...');
         String? apnsToken;
-        for (int i = 0; i < 5; i++) {
+        
+        for (int i = 0; i < 10; i++) {
           apnsToken = await _messaging!.getAPNSToken();
           if (apnsToken != null) {
-            print('✅ [VALE FCM] APNs token alındı (${i+1}. deneme)');
+            print('✅ [VALE APNs] Token alındı (${i+1}. deneme)');
             break;
           }
           await Future.delayed(const Duration(milliseconds: 500));
         }
         
-        if (apnsToken == null) {
-          print('⚠️ [VALE FCM] APNs token alınamadı');
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          print('🍎 [VALE APNs] Token: ${apnsToken.substring(0, 20)}...');
+          _cachedFcmToken = apnsToken;
+          
+          // APNs token'ı backend'e gönder
+          print('📡 [VALE APNs] Token backend\'e gönderiliyor...');
+          final response = await http.post(
+            Uri.parse('$baseUrl/update_fcm_token.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': driverId,
+              'user_type': userType,
+              'apns_token': apnsToken,
+              'device_type': 'ios',
+            }),
+          ).timeout(const Duration(seconds: 10));
+          
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            if (data['success'] == true) {
+              print('✅ [VALE APNs] Token backend\'e kaydedildi!');
+              _fcmTokenSentToServer = true;
+              _retryTimer?.cancel();
+              await _subscribeToTopics();
+              return true;
+            } else {
+              print('❌ [VALE APNs] Backend hatası: ${data['message']}');
+            }
+          } else {
+            print('❌ [VALE APNs] HTTP hatası: ${response.statusCode}');
+          }
+          return false;
+        } else {
+          print('❌ [VALE APNs] Token alınamadı - 2 dakika sonra tekrar denenecek');
+          _scheduleRetry(driverId, userType);
+          return false;
         }
       }
       
-      // APNs → Firebase senkronizasyonu için 2sn bekle
-      print('⏳ [VALE FCM] APNs → Firebase senkronizasyonu için 2sn bekleniyor...');
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // 🔥 TEK DENEME - Rate limit'i önle!
-      print('🔑 [VALE FCM] Token alınıyor (TEK DENEME)...');
+      // 🤖 Android: FCM token kullan
+      print('🤖 [VALE FCM] Android - FCM token alınıyor...');
       String? token;
       
       try {
@@ -212,17 +246,6 @@ class AdvancedNotificationService {
         }
       } catch (tokenError) {
         print('⚠️ [VALE FCM] Token alma başarısız: $tokenError');
-        
-        // 🔍 NATIVE HATASI: Gerçek iOS hatasını al
-        if (Platform.isIOS) {
-          try {
-            const channel = MethodChannel('debug_fcm');
-            final nativeResult = await channel.invokeMethod('getNativeFcmToken');
-            print('🔍 [VALE NATIVE] Token: $nativeResult');
-          } catch (nativeError) {
-            print('🔍 [VALE NATIVE HATA] $nativeError');
-          }
-        }
       }
       
       // Token alınamadıysa - 2 DAKİKA SONRA OTOMATİK TEKRAR DENE!
@@ -243,6 +266,7 @@ class AdvancedNotificationService {
           'user_id': driverId,
           'user_type': userType,
           'fcm_token': token,
+          'device_type': 'android',
         }),
       ).timeout(const Duration(seconds: 10));
       
