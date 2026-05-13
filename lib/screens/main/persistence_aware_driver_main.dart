@@ -153,27 +153,19 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
   }
   
   /// Lokal kontrol (fallback)
+  /// 
+  /// NOT: Backend hata verdiğinde ve sürücü daha önce SharedPreferences'a
+  /// 'driver_consents_accepted=true' yazmış olsa bile, eğer DB'ye log atılamadıysa
+  /// backend kaydı eksik kalır. Bu yüzden fallback'te de KKVK uyumluluğu için
+  /// consent ekranını gösteriyoruz - tekrar onaylasın ve log düşsün.
   Future<void> _fallbackToLocalCheck() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final consentsAccepted = prefs.getBool('driver_consents_accepted') ?? false;
-      
-      print('📋 [SÜRÜCÜ] Fallback: Lokal kontrol - ${consentsAccepted ? "ONAYLANMIŞ" : "ONAYLANMAMIŞ"}');
-      
-      if (!consentsAccepted) {
-        setState(() {
-          _checkingConsents = false;
-          _showConsentScreen = true;
-          _showUpdateScreen = false;
-        });
-      } else {
-        setState(() {
-          _checkingConsents = false;
-          _showConsentScreen = false;
-          _showUpdateScreen = false;
-        });
-        _checkForActiveRideAsMain();
-      }
+      print('📋 [SÜRÜCÜ] Fallback: Backend ulaşılamadı - güvenlik için consent ekranı gösteriliyor');
+      setState(() {
+        _checkingConsents = false;
+        _showConsentScreen = true;
+        _showUpdateScreen = false;
+      });
     } catch (e) {
       print('❌ Fallback hatası: $e');
       setState(() {

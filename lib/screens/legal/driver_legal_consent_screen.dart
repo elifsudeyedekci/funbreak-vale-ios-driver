@@ -44,7 +44,13 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // ZORUNLU ONAY: Geri tuşu engellendi, sürücü onaylamadan ekrandan çıkamaz.
+    return WillPopScope(
+      onWillPop: () async {
+        _showExitWarning();
+        return false; // geri tuşunu engelle
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
         title: const Text('Sözleşme Onayları'),
@@ -237,6 +243,43 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
             ],
           ),
         ),
+      ),
+      ), // Scaffold kapanışı
+    ); // WillPopScope kapanışı
+  }
+
+  /// Sürücü onay vermeden çıkmaya çalışırsa uyarı göster.
+  /// "Çıkış Yap" seçerse uygulamadan tamamen çıkar (KVKK gereği zorunlu onay).
+  void _showExitWarning() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.amber),
+            SizedBox(width: 8),
+            Text('Dikkat', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: const Text(
+          'Sözleşmeleri onaylamadan vale uygulamasını kullanamazsınız.\n\nÇıkmak istediğinize emin misiniz?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              exit(0);
+            },
+            child: const Text('Çıkış Yap', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
@@ -532,42 +575,77 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         {'type': 'open_consent', 'text': _getOpenConsentText(), 'summary': 'Açık Rıza Beyanı'},
       ];
 
+      // 🔥 TÜM SÖZLEŞMELERİN BAŞARIYLA KAYDEDİLDİĞİNİ TAKİP ET
+      int successCount = 0;
+      int failCount = 0;
+      List<String> failedConsents = [];
+      
       for (var consent in consents) {
         print('📝 VALE SÖZLEŞME LOG: ${consent['type']}');
         
-        final response = await http.post(
-          Uri.parse('https://admin.funbreakvale.com/api/log_legal_consent.php'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_id': widget.driverId,
-            'user_type': 'driver',
-            'consent_type': consent['type'],
-            'consent_text': consent['text'],
-            'consent_summary': consent['summary'],
-            'consent_version': '1.0',
-            'ip_address': deviceInfo['ip_address'],
-            'user_agent': deviceInfo['user_agent'],
-            'device_fingerprint': deviceInfo['device_fingerprint'],
-            'platform': deviceInfo['platform'],
-            'os_version': deviceInfo['os_version'],
-            'app_version': deviceInfo['app_version'],
-            'device_model': deviceInfo['device_model'],
-            'device_manufacturer': deviceInfo['device_manufacturer'],
-            'latitude': position?.latitude,
-            'longitude': position?.longitude,
-            'location_accuracy': position?.accuracy,
-            'location_timestamp': position != null ? DateTime.now().toIso8601String() : null,
-            'language': 'tr',
-          }),
-        ).timeout(const Duration(seconds: 10));
+        try {
+          final response = await http.post(
+            Uri.parse('https://admin.funbreakvale.com/api/log_legal_consent.php'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'user_id': widget.driverId,
+              'user_type': 'driver',
+              'consent_type': consent['type'],
+              'consent_text': consent['text'],
+              'consent_summary': consent['summary'],
+              'consent_version': '4.0',
+              'ip_address': deviceInfo['ip_address'],
+              'user_agent': deviceInfo['user_agent'],
+              'device_fingerprint': deviceInfo['device_fingerprint'],
+              'platform': deviceInfo['platform'],
+              'os_version': deviceInfo['os_version'],
+              'app_version': deviceInfo['app_version'],
+              'device_model': deviceInfo['device_model'],
+              'device_manufacturer': deviceInfo['device_manufacturer'],
+              'latitude': position?.latitude,
+              'longitude': position?.longitude,
+              'location_accuracy': position?.accuracy,
+              'location_timestamp': position != null ? DateTime.now().toIso8601String() : null,
+              'language': 'tr',
+            }),
+          ).timeout(const Duration(seconds: 10));
 
-        final apiData = jsonDecode(response.body);
-        if (apiData['success'] == true) {
-          print('✅ Vale sözleşme ${consent['type']} loglandı - Log ID: ${apiData['log_id']}');
-        } else {
-          print('❌ Vale sözleşme ${consent['type']} log hatası: ${apiData['message']}');
+          // 🔥 HTTP STATUS CODE KONTROLÜ EKLE!
+          if (response.statusCode != 200) {
+            print('❌ HTTP HATASI: Status ${response.statusCode} - ${response.body}');
+            failCount++;
+            failedConsents.add(consent['type'] as String);
+            continue;
+          }
+
+          final apiData = jsonDecode(response.body);
+          if (apiData['success'] == true) {
+            print('✅ Vale sözleşme ${consent['type']} loglandı - Log ID: ${apiData['log_id']}');
+            successCount++;
+          } else {
+            print('❌ Vale sözleşme ${consent['type']} log hatası: ${apiData['message'] ?? 'Bilinmeyen hata'}');
+            failCount++;
+            failedConsents.add(consent['type'] as String);
+          }
+        } catch (e) {
+          print('❌ Vale sözleşme ${consent['type']} exception: $e');
+          failCount++;
+          failedConsents.add(consent['type'] as String);
         }
       }
+      
+      // En az 1 sözleşme kaydedildiyse devam et; aksi halde hata göster
+      if (successCount == 0) {
+        throw Exception('Hiçbir sözleşme kaydedilemedi: ${failedConsents.join(', ')}. İnternet bağlantınızı kontrol edip tekrar deneyin.');
+      }
+
+      if (failCount > 0) {
+        print('⚠️ Kısmi başarı: $successCount kaydedildi, $failCount başarısız (${failedConsents.join(', ')})');
+        // Arka planda sessizce yeniden dene (kullanıcı tarafı bloklanmaz)
+        _retryFailedConsentsInBackground(failedConsents, consents, deviceInfo, position);
+      }
+
+      print('✅ $successCount/${consents.length} SÖZLEŞME KAYDEDİLDİ - devam ediliyor');
 
       // SharedPreferences'a kaydet - bir daha gösterme
       final prefs = await SharedPreferences.getInstance();
@@ -589,6 +667,69 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
       );
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  /// Başarısız sözleşme kayıtlarını arka planda yeniden dener
+  /// (Kullanıcı engellenmesin - ana sayfaya geçer, biz arka planda halletmeye devam ederiz)
+  Future<void> _retryFailedConsentsInBackground(
+    List<String> failedTypes,
+    List<Map<String, dynamic>> consents,
+    Map<String, dynamic> deviceInfo,
+    Position? position,
+  ) async {
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      await Future.delayed(Duration(seconds: 5 * attempt));
+      if (failedTypes.isEmpty) return;
+      final stillFailed = <String>[];
+
+      for (final type in List<String>.from(failedTypes)) {
+        final consent = consents.firstWhere(
+          (c) => c['type'] == type,
+          orElse: () => <String, dynamic>{},
+        );
+        if (consent.isEmpty) continue;
+        try {
+          final response = await http
+              .post(
+                Uri.parse('https://admin.funbreakvale.com/api/log_legal_consent.php'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'user_id': widget.driverId,
+                  'user_type': 'driver',
+                  'consent_type': consent['type'],
+                  'consent_text': consent['text'],
+                  'consent_summary': consent['summary'],
+                  'consent_version': '4.0',
+                  'ip_address': deviceInfo['ip_address'],
+                  'user_agent': deviceInfo['user_agent'],
+                  'device_fingerprint': deviceInfo['device_fingerprint'],
+                  'platform': deviceInfo['platform'],
+                  'os_version': deviceInfo['os_version'],
+                  'app_version': deviceInfo['app_version'],
+                  'device_model': deviceInfo['device_model'],
+                  'device_manufacturer': deviceInfo['device_manufacturer'],
+                  'latitude': position?.latitude,
+                  'longitude': position?.longitude,
+                  'location_accuracy': position?.accuracy,
+                  'language': 'tr',
+                }),
+              )
+              .timeout(const Duration(seconds: 10));
+          if (response.statusCode == 200 &&
+              jsonDecode(response.body)['success'] == true) {
+            print('🔁 [BG retry $attempt] $type başarılı');
+          } else {
+            stillFailed.add(type);
+          }
+        } catch (_) {
+          stillFailed.add(type);
+        }
+      }
+      failedTypes = stillFailed;
+    }
+    if (failedTypes.isNotEmpty) {
+      print('⚠️ [BG retry] hala başarısız sözleşmeler: ${failedTypes.join(", ")}');
     }
   }
 
