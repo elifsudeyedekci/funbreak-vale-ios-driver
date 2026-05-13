@@ -27,8 +27,35 @@ class DriverContractUpdateScreen extends StatefulWidget {
 }
 
 class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen> {
+  static const _legalPostTimeout = Duration(seconds: 60);
+  static const _legalApiUrl = 'https://admin.funbreakvale.com/api/log_legal_consent.php';
+
   final Map<String, bool> _acceptedContracts = {};
   bool _isLoading = false;
+
+  Map<String, String> _legalConsentHeaders() {
+    final p = Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'unknown');
+    return {
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Accept': 'application/json',
+      'User-Agent': 'FunBreakValeDriver/1.5 ($p) ${Platform.operatingSystemVersion}',
+    };
+  }
+
+  Map<String, dynamic> _decodeConsentResponseBody(String body) {
+    var raw = body.trim();
+    if (raw.startsWith('\uFEFF')) {
+      raw = raw.substring(1);
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) {
+      throw FormatException('API yanıtı JSON nesnesi değil');
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  bool _apiSuccessFlag(dynamic v) =>
+      v == true || v == 1 || v == '1' || v == 'true';
 
   @override
   void initState() {
@@ -429,6 +456,9 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
         print('⚠️ Konum alınamadı: $e');
       }
 
+      int ok = 0;
+      final errors = <String>[];
+
       for (var contract in widget.pendingContracts) {
         final type = contract['type'] as String;
         final version = contract['latest_version'] as String;
@@ -436,35 +466,55 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
 
         print('📝 VALE SÖZLEŞME LOG: $type v$version');
         
-        final response = await http.post(
-          Uri.parse('https://admin.funbreakvale.com/api/log_legal_consent.php'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_id': widget.driverId,
-            'user_type': 'driver',
-            'consent_type': type,
-            'consent_text': _getContractContent(type),
-            'consent_summary': title,
-            'consent_version': version,
-            'ip_address': deviceInfo['ip_address'],
-            'user_agent': deviceInfo['user_agent'],
-            'device_fingerprint': deviceInfo['device_fingerprint'],
-            'platform': deviceInfo['platform'],
-            'os_version': deviceInfo['os_version'],
-            'app_version': deviceInfo['app_version'],
-            'latitude': position?.latitude,
-            'longitude': position?.longitude,
-            'location_accuracy': position?.accuracy,
-            'language': 'tr',
-          }),
-        ).timeout(const Duration(seconds: 10));
+        try {
+          final response = await http.post(
+            Uri.parse(_legalApiUrl),
+            headers: _legalConsentHeaders(),
+            body: jsonEncode({
+              'user_id': widget.driverId,
+              'driver_id': widget.driverId,
+              'user_type': 'driver',
+              'consent_type': type,
+              'consent_text': _getContractContent(type),
+              'consent_summary': title,
+              'consent_version': version,
+              'ip_address': deviceInfo['ip_address'],
+              'user_agent': deviceInfo['user_agent'],
+              'device_fingerprint': deviceInfo['device_fingerprint'],
+              'platform': deviceInfo['platform'],
+              'os_version': deviceInfo['os_version'],
+              'app_version': deviceInfo['app_version'],
+              'latitude': position?.latitude,
+              'longitude': position?.longitude,
+              'location_accuracy': position?.accuracy,
+              'language': 'tr',
+            }),
+          ).timeout(_legalPostTimeout);
 
-        final apiData = jsonDecode(response.body);
-        if (apiData['success'] == true) {
-          print('✅ Vale sözleşme $type v$version loglandı');
-        } else {
-          print('❌ Vale sözleşme $type log hatası: ${apiData['message']}');
+          if (response.statusCode != 200) {
+            errors.add('$type: HTTP ${response.statusCode}');
+            continue;
+          }
+          final apiData = _decodeConsentResponseBody(response.body);
+          if (_apiSuccessFlag(apiData['success'])) {
+            print('✅ Vale sözleşme $type v$version loglandı');
+            ok++;
+          } else {
+            final msg = apiData['message']?.toString() ?? 'bilinmeyen';
+            errors.add('$type: $msg');
+            print('❌ Vale sözleşme $type log hatası: $msg');
+          }
+        } catch (e) {
+          errors.add('$type: $e');
+          print('❌ Vale sözleşme $type istisna: $e');
         }
+      }
+
+      if (ok < widget.pendingContracts.length) {
+        throw Exception(
+          'Bazı sözleşmeler kaydedilemedi (${errors.join(' | ')}). '
+          'Bağlantınızı kontrol edip tekrar deneyin.',
+        );
       }
 
       // SharedPreferences'a kaydet (eski sistem ile uyumluluk)

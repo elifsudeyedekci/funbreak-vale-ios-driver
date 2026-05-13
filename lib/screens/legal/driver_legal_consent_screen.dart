@@ -29,6 +29,33 @@ class DriverLegalConsentScreen extends StatefulWidget {
 }
 
 class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
+  static const _legalPostTimeout = Duration(seconds: 60);
+  static const _legalApiUrl = 'https://admin.funbreakvale.com/api/log_legal_consent.php';
+
+  Map<String, String> _legalConsentHeaders() {
+    final p = Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'unknown');
+    return {
+      'Content-Type': 'application/json; charset=UTF-8',
+      'Accept': 'application/json',
+      'User-Agent': 'FunBreakValeDriver/1.5 ($p) ${Platform.operatingSystemVersion}',
+    };
+  }
+
+  Map<String, dynamic> _decodeConsentResponseBody(String body) {
+    var raw = body.trim();
+    if (raw.startsWith('\uFEFF')) {
+      raw = raw.substring(1);
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) {
+      throw FormatException('API yanıtı JSON nesnesi değil');
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  bool _apiSuccessFlag(dynamic v) =>
+      v == true || v == 1 || v == '1' || v == 'true';
+
   bool _usageAgreementAccepted = false;
   bool _kvkkAccepted = false;
   bool _specialDataAccepted = false;
@@ -585,10 +612,11 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         
         try {
           final response = await http.post(
-            Uri.parse('https://admin.funbreakvale.com/api/log_legal_consent.php'),
-            headers: {'Content-Type': 'application/json'},
+            Uri.parse(_legalApiUrl),
+            headers: _legalConsentHeaders(),
             body: jsonEncode({
               'user_id': widget.driverId,
+              'driver_id': widget.driverId,
               'user_type': 'driver',
               'consent_type': consent['type'],
               'consent_text': consent['text'],
@@ -608,7 +636,7 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
               'location_timestamp': position != null ? DateTime.now().toIso8601String() : null,
               'language': 'tr',
             }),
-          ).timeout(const Duration(seconds: 10));
+          ).timeout(_legalPostTimeout);
 
           // 🔥 HTTP STATUS CODE KONTROLÜ EKLE!
           if (response.statusCode != 200) {
@@ -618,8 +646,8 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
             continue;
           }
 
-          final apiData = jsonDecode(response.body);
-          if (apiData['success'] == true) {
+          final apiData = _decodeConsentResponseBody(response.body);
+          if (_apiSuccessFlag(apiData['success'])) {
             print('✅ Vale sözleşme ${consent['type']} loglandı - Log ID: ${apiData['log_id']}');
             successCount++;
           } else {
@@ -636,7 +664,11 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
       
       // En az 1 sözleşme kaydedildiyse devam et; aksi halde hata göster
       if (successCount == 0) {
-        throw Exception('Hiçbir sözleşme kaydedilemedi: ${failedConsents.join(', ')}. İnternet bağlantınızı kontrol edip tekrar deneyin.');
+        throw Exception(
+          'Hiçbir sözleşme kaydedilemedi (${failedConsents.join(', ')}). '
+          'Bağlantı yavaşsa süre dolmuş olabilir; bir süre sonra tekrar deneyin. '
+          'Sorun sürerse yönetimle iletişime geçin.',
+        );
       }
 
       if (failCount > 0) {
@@ -692,10 +724,11 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         try {
           final response = await http
               .post(
-                Uri.parse('https://admin.funbreakvale.com/api/log_legal_consent.php'),
-                headers: {'Content-Type': 'application/json'},
+                Uri.parse(_legalApiUrl),
+                headers: _legalConsentHeaders(),
                 body: jsonEncode({
                   'user_id': widget.driverId,
+                  'driver_id': widget.driverId,
                   'user_type': 'driver',
                   'consent_type': consent['type'],
                   'consent_text': consent['text'],
@@ -715,9 +748,9 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
                   'language': 'tr',
                 }),
               )
-              .timeout(const Duration(seconds: 10));
+              .timeout(_legalPostTimeout);
           if (response.statusCode == 200 &&
-              jsonDecode(response.body)['success'] == true) {
+              _apiSuccessFlag(_decodeConsentResponseBody(response.body)['success'])) {
             print('🔁 [BG retry $attempt] $type başarılı');
           } else {
             stillFailed.add(type);
