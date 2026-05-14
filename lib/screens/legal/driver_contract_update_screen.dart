@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 import '../../services/legal_consent_log_service.dart';
+import '../../utils/driver_numeric_id.dart';
 
 /// SÜRÜCÜ SÖZLEŞME GÜNCELLEME EKRANI
 /// 
@@ -417,8 +418,24 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
     setState(() => _isLoading = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      var userId = widget.driverId > 0 ? widget.driverId : readDriverNumericUserId(prefs);
+      if (userId <= 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Oturum kimliği bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       final deviceInfo = LegalConsentLogService.buildDeviceInfo(
-        userId: widget.driverId,
+        userId: userId,
         isDriver: true,
       );
       
@@ -444,7 +461,7 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
         
         try {
           final apiData = await LegalConsentLogService.postLegalConsent(
-            userId: widget.driverId,
+            userId: userId,
             userType: 'driver',
             consentType: type,
             consentText: _getContractContent(type),
@@ -476,7 +493,6 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
       }
 
       // SharedPreferences'a kaydet (eski sistem ile uyumluluk)
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('driver_consents_accepted', true);
       await prefs.setString('driver_consents_version', '4.0');
       await prefs.setString('driver_consents_date', DateTime.now().toIso8601String());

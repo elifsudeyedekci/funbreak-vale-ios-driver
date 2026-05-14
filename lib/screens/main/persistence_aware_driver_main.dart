@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../utils/driver_numeric_id.dart';
 import '../../services/ride_persistence_service.dart';
 import '../ride/modern_active_ride_screen.dart';
 import '../home/driver_home_screen.dart';
@@ -38,14 +39,8 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
       
       final prefs = await SharedPreferences.getInstance();
       
-      // Sürücü bilgilerini al
-      _driverId = prefs.getInt('driver_id') ?? 0;
-      if (_driverId == 0) {
-        final driverIdStr = prefs.getString('driver_id');
-        if (driverIdStr != null) {
-          _driverId = int.tryParse(driverIdStr) ?? 0;
-        }
-      }
+      // Sürücü bilgilerini al (driver_id + admin_user_id — login akışıyla uyumlu)
+      _driverId = readDriverNumericUserId(prefs);
       _driverName = prefs.getString('driver_name') ?? prefs.getString('name') ?? 'Vale';
       
       print('📋 Driver ID: $_driverId, Name: $_driverName');
@@ -161,7 +156,20 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
   Future<void> _fallbackToLocalCheck() async {
     try {
       print('📋 [SÜRÜCÜ] Fallback: Backend ulaşılamadı - güvenlik için consent ekranı gösteriliyor');
+      final prefs = await SharedPreferences.getInstance();
+      final resolved = readDriverNumericUserId(prefs);
+      if (resolved <= 0) {
+        print('⚠️ [SÜRÜCÜ] Fallback: geçerli sürücü ID yok — consent açılmıyor');
+        setState(() {
+          _checkingConsents = false;
+          _showConsentScreen = false;
+          _showUpdateScreen = false;
+        });
+        _checkForActiveRideAsMain();
+        return;
+      }
       setState(() {
+        _driverId = resolved;
         _checkingConsents = false;
         _showConsentScreen = true;
         _showUpdateScreen = false;

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
 import '../../services/legal_consent_log_service.dart';
+import '../../utils/driver_numeric_id.dart';
 
 /// SÜRÜCÜ İLK GİRİŞ SÖZLEŞME ONAY EKRANI
 /// 4 Zorunlu sözleşme onayı alınır:
@@ -552,8 +553,24 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      var userId = widget.driverId > 0 ? widget.driverId : readDriverNumericUserId(prefs);
+      if (userId <= 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Oturum kimliği bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       final deviceInfo = LegalConsentLogService.buildDeviceInfo(
-        userId: widget.driverId,
+        userId: userId,
         isDriver: true,
       );
       
@@ -586,7 +603,7 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         
         try {
           final apiData = await LegalConsentLogService.postLegalConsent(
-            userId: widget.driverId,
+            userId: userId,
             userType: 'driver',
             consentType: consent['type'] as String,
             consentText: consent['text'] as String,
@@ -623,13 +640,12 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
       if (failCount > 0) {
         print('⚠️ Kısmi başarı: $successCount kaydedildi, $failCount başarısız (${failedConsents.join(', ')})');
         // Arka planda sessizce yeniden dene (kullanıcı tarafı bloklanmaz)
-        _retryFailedConsentsInBackground(failedConsents, consents, deviceInfo, position);
+        _retryFailedConsentsInBackground(userId, failedConsents, consents, deviceInfo, position);
       }
 
       print('✅ $successCount/${consents.length} SÖZLEŞME KAYDEDİLDİ - devam ediliyor');
 
       // SharedPreferences'a kaydet - bir daha gösterme
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('driver_consents_accepted', true);
       await prefs.setString('driver_consents_date', DateTime.now().toIso8601String());
 
@@ -654,6 +670,7 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
   /// Başarısız sözleşme kayıtlarını arka planda yeniden dener
   /// (Kullanıcı engellenmesin - ana sayfaya geçer, biz arka planda halletmeye devam ederiz)
   Future<void> _retryFailedConsentsInBackground(
+    int userId,
     List<String> failedTypes,
     List<Map<String, dynamic>> consents,
     Map<String, dynamic> deviceInfo,
@@ -672,7 +689,7 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         if (consent.isEmpty) continue;
         try {
           final apiData = await LegalConsentLogService.postLegalConsent(
-            userId: widget.driverId,
+            userId: userId,
             userType: 'driver',
             consentType: consent['type'] as String,
             consentText: consent['text'] as String,
