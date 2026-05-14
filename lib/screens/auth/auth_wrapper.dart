@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../home/driver_home_screen.dart';
 import '../main/persistence_aware_driver_main.dart'; // SÖZLEŞME KONTROLÜ İÇİN!
 import 'login_screen.dart';
-import '../../services/ride_persistence_service.dart';
 import '../ride/modern_active_ride_screen.dart';
 
 class AuthWrapper extends StatefulWidget {
@@ -29,11 +27,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final driverId = prefs.getString('driver_id');
+      final adminUserId = prefs.getString('admin_user_id');
       final authToken = prefs.getString('auth_token');
       
-      print('🔐 [ŞOFÖR] Auth kontrol: Driver ID = $driverId, Token = ${authToken != null ? "Var" : "Yok"}');
+      print(
+        '🔐 [ŞOFÖR] Auth kontrol: driver_id=$driverId, admin_user_id=$adminUserId, Token=${authToken != null ? "Var" : "Yok"}',
+      );
       
-      final isLoggedIn = driverId != null && driverId.isNotEmpty;
+      final isLoggedIn = (driverId != null && driverId.isNotEmpty) ||
+          (adminUserId != null && adminUserId.isNotEmpty);
       
       if (isLoggedIn) {
         // LOGIN BAŞARILI - PERSİSTENCE KONTROL ET!

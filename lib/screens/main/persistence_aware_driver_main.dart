@@ -9,6 +9,17 @@ import '../home/driver_home_screen.dart';
 import '../legal/driver_legal_consent_screen.dart';
 import '../legal/driver_contract_update_screen.dart';  // YENİ: Sözleşme güncelleme ekranı
 
+bool _jsonTruthy(dynamic v) {
+  if (v == true) return true;
+  if (v == false || v == null) return false;
+  if (v is num) return v != 0;
+  if (v is String) {
+    final s = v.toLowerCase().trim();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class PersistenceAwareDriverMainScreen extends StatefulWidget {
   const PersistenceAwareDriverMainScreen({Key? key}) : super(key: key);
 
@@ -118,22 +129,28 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        if (data['success'] == true) {
-          final needsUpdate = data['needs_update'] == true;
-          final pendingContracts = data['pending_contracts'] ?? [];
-          final acceptedContracts = data['accepted_contracts'] ?? {};
-          
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map) {
+          throw Exception('Geçersiz JSON gövdesi');
+        }
+        final map = Map<String, dynamic>.from(decoded);
+
+        if (_jsonTruthy(map['success'])) {
+          final needsUpdate = _jsonTruthy(map['needs_update']);
+          final pendingContracts = map['pending_contracts'] ?? [];
+          final acceptedRaw = map['accepted_contracts'];
+          final acceptedCount = acceptedRaw is Map ? acceptedRaw.length : 0;
+          final hasAnyAccepted = acceptedCount > 0;
+
           print('📜 [SÜRÜCÜ] Backend sözleşme kontrolü:');
           print('   - Güncelleme gerekiyor: $needsUpdate');
-          print('   - Bekleyen: ${pendingContracts.length}');
-          print('   - Daha önce kabul edilmiş: ${acceptedContracts.length}');
-          
+          print('   - Bekleyen: ${pendingContracts is List ? pendingContracts.length : 0}');
+          print('   - Daha önce kabul edilmiş: $acceptedCount');
+
           return {
             'needs_update': needsUpdate,
             'pending_contracts': pendingContracts,
-            'has_any_accepted': acceptedContracts.isNotEmpty,
+            'has_any_accepted': hasAnyAccepted,
           };
         }
       }
@@ -262,7 +279,7 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
       );
     }
     
-    // 🆕 Sözleşme GÜNCELLEME ekranı göster (eski kullanıcı için yeni versiyon)
+    // 🆕 Sözleşme GÜNCELLEME ekranı (bekleyen liste doluysa)
     if (_showUpdateScreen && _pendingContracts.isNotEmpty) {
       return DriverContractUpdateScreen(
         driverId: _driverId,
@@ -270,9 +287,12 @@ class _PersistenceAwareDriverMainScreenState extends State<PersistenceAwareDrive
         onAllAccepted: _onConsentsAccepted,
       );
     }
-    
-    // İlk kez sözleşme onay ekranı göster (yeni kullanıcı)
-    if (_showConsentScreen) {
+
+    // Güncelleme bayrağı ama liste boş / API uyumsuzluğu → yine tam onay ekranı (v4 log düşsün)
+    if (_showConsentScreen || (_showUpdateScreen && _pendingContracts.isEmpty)) {
+      if (_showUpdateScreen && _pendingContracts.isEmpty) {
+        print('⚠️ [SÜRÜCÜ] Güncelleme modu ama pending boş — tam sözleşme ekranı gösteriliyor');
+      }
       return DriverLegalConsentScreen(
         driverId: _driverId,
         driverName: _driverName,
