@@ -27,6 +27,7 @@ class ApiConfig {
   static String get updateFcmToken => '$apiUrl/update_fcm_token.php';
   static String get sendAdvancedNotification => '$apiUrl/send_advanced_notification.php';
   static String get getNotificationHistory => '$apiUrl/get_notification_history.php';
+  static String get logLegalConsent => '$apiUrl/log_legal_consent.php';
   
   // Panel base URL
   static String get panelUrl => baseUrl;

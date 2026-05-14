@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
-import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'dart:io';
+
+import '../../services/legal_consent_log_service.dart';
 
 /// SÜRÜCÜ İLK GİRİŞ SÖZLEŞME ONAY EKRANI
 /// 4 Zorunlu sözleşme onayı alınır:
@@ -29,33 +28,6 @@ class DriverLegalConsentScreen extends StatefulWidget {
 }
 
 class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
-  static const _legalPostTimeout = Duration(seconds: 60);
-  static const _legalApiUrl = 'https://admin.funbreakvale.com/api/log_legal_consent.php';
-
-  Map<String, String> _legalConsentHeaders() {
-    final p = Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'unknown');
-    return {
-      'Content-Type': 'application/json; charset=UTF-8',
-      'Accept': 'application/json',
-      'User-Agent': 'FunBreakValeDriver/1.5 ($p) ${Platform.operatingSystemVersion}',
-    };
-  }
-
-  Map<String, dynamic> _decodeConsentResponseBody(String body) {
-    var raw = body.trim();
-    if (raw.startsWith('\uFEFF')) {
-      raw = raw.substring(1);
-    }
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) {
-      throw FormatException('API yanıtı JSON nesnesi değil');
-    }
-    return Map<String, dynamic>.from(decoded);
-  }
-
-  bool _apiSuccessFlag(dynamic v) =>
-      v == true || v == 1 || v == '1' || v == 'true';
-
   bool _usageAgreementAccepted = false;
   bool _kvkkAccepted = false;
   bool _specialDataAccepted = false;
@@ -580,8 +552,10 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Cihaz bilgilerini topla
-      final deviceInfo = await _collectDeviceInfo();
+      final deviceInfo = LegalConsentLogService.buildDeviceInfo(
+        userId: widget.driverId,
+        isDriver: true,
+      );
       
       // Konum bilgisi topla
       Position? position;
@@ -611,43 +585,18 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         print('📝 VALE SÖZLEŞME LOG: ${consent['type']}');
         
         try {
-          final response = await http.post(
-            Uri.parse(_legalApiUrl),
-            headers: _legalConsentHeaders(),
-            body: jsonEncode({
-              'user_id': widget.driverId,
-              'driver_id': widget.driverId,
-              'user_type': 'driver',
-              'consent_type': consent['type'],
-              'consent_text': consent['text'],
-              'consent_summary': consent['summary'],
-              'consent_version': '4.0',
-              'ip_address': deviceInfo['ip_address'],
-              'user_agent': deviceInfo['user_agent'],
-              'device_fingerprint': deviceInfo['device_fingerprint'],
-              'platform': deviceInfo['platform'],
-              'os_version': deviceInfo['os_version'],
-              'app_version': deviceInfo['app_version'],
-              'device_model': deviceInfo['device_model'],
-              'device_manufacturer': deviceInfo['device_manufacturer'],
-              'latitude': position?.latitude,
-              'longitude': position?.longitude,
-              'location_accuracy': position?.accuracy,
-              'location_timestamp': position != null ? DateTime.now().toIso8601String() : null,
-              'language': 'tr',
-            }),
-          ).timeout(_legalPostTimeout);
+          final apiData = await LegalConsentLogService.postLegalConsent(
+            userId: widget.driverId,
+            userType: 'driver',
+            consentType: consent['type'] as String,
+            consentText: consent['text'] as String,
+            consentSummary: consent['summary'] as String,
+            consentVersion: '4.0',
+            deviceInfo: deviceInfo,
+            position: position,
+          );
 
-          // 🔥 HTTP STATUS CODE KONTROLÜ EKLE!
-          if (response.statusCode != 200) {
-            print('❌ HTTP HATASI: Status ${response.statusCode} - ${response.body}');
-            failCount++;
-            failedConsents.add(consent['type'] as String);
-            continue;
-          }
-
-          final apiData = _decodeConsentResponseBody(response.body);
-          if (_apiSuccessFlag(apiData['success'])) {
+          if (apiData['success'] == true) {
             print('✅ Vale sözleşme ${consent['type']} loglandı - Log ID: ${apiData['log_id']}');
             successCount++;
           } else {
@@ -722,35 +671,17 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
         );
         if (consent.isEmpty) continue;
         try {
-          final response = await http
-              .post(
-                Uri.parse(_legalApiUrl),
-                headers: _legalConsentHeaders(),
-                body: jsonEncode({
-                  'user_id': widget.driverId,
-                  'driver_id': widget.driverId,
-                  'user_type': 'driver',
-                  'consent_type': consent['type'],
-                  'consent_text': consent['text'],
-                  'consent_summary': consent['summary'],
-                  'consent_version': '4.0',
-                  'ip_address': deviceInfo['ip_address'],
-                  'user_agent': deviceInfo['user_agent'],
-                  'device_fingerprint': deviceInfo['device_fingerprint'],
-                  'platform': deviceInfo['platform'],
-                  'os_version': deviceInfo['os_version'],
-                  'app_version': deviceInfo['app_version'],
-                  'device_model': deviceInfo['device_model'],
-                  'device_manufacturer': deviceInfo['device_manufacturer'],
-                  'latitude': position?.latitude,
-                  'longitude': position?.longitude,
-                  'location_accuracy': position?.accuracy,
-                  'language': 'tr',
-                }),
-              )
-              .timeout(_legalPostTimeout);
-          if (response.statusCode == 200 &&
-              _apiSuccessFlag(_decodeConsentResponseBody(response.body)['success'])) {
+          final apiData = await LegalConsentLogService.postLegalConsent(
+            userId: widget.driverId,
+            userType: 'driver',
+            consentType: consent['type'] as String,
+            consentText: consent['text'] as String,
+            consentSummary: consent['summary'] as String,
+            consentVersion: '4.0',
+            deviceInfo: deviceInfo,
+            position: position,
+          );
+          if (apiData['success'] == true) {
             print('🔁 [BG retry $attempt] $type başarılı');
           } else {
             stillFailed.add(type);
@@ -764,24 +695,6 @@ class _DriverLegalConsentScreenState extends State<DriverLegalConsentScreen> {
     if (failedTypes.isNotEmpty) {
       print('⚠️ [BG retry] hala başarısız sözleşmeler: ${failedTypes.join(", ")}');
     }
-  }
-
-  Future<Map<String, dynamic>> _collectDeviceInfo() async {
-    final platform = Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'unknown');
-    final fingerprint = DateTime.now().millisecondsSinceEpoch.toString() + 
-                       '_driver_' + 
-                       widget.driverId.toString();
-    
-    return {
-      'platform': platform,
-      'os_version': Platform.operatingSystemVersion,
-      'app_version': '1.0.0',
-      'device_model': 'auto',
-      'device_manufacturer': 'auto',
-      'device_fingerprint': fingerprint,
-      'user_agent': 'FunBreak Vale App/$platform ${Platform.operatingSystemVersion}',
-      'ip_address': 'auto',
-    };
   }
 
   // SÖZLEŞME METİNLERİ

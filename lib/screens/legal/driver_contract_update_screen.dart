@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'dart:io';
+
+import '../../services/legal_consent_log_service.dart';
 
 /// SÜRÜCÜ SÖZLEŞME GÜNCELLEME EKRANI
 /// 
@@ -27,35 +27,8 @@ class DriverContractUpdateScreen extends StatefulWidget {
 }
 
 class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen> {
-  static const _legalPostTimeout = Duration(seconds: 60);
-  static const _legalApiUrl = 'https://admin.funbreakvale.com/api/log_legal_consent.php';
-
   final Map<String, bool> _acceptedContracts = {};
   bool _isLoading = false;
-
-  Map<String, String> _legalConsentHeaders() {
-    final p = Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'unknown');
-    return {
-      'Content-Type': 'application/json; charset=UTF-8',
-      'Accept': 'application/json',
-      'User-Agent': 'FunBreakValeDriver/1.5 ($p) ${Platform.operatingSystemVersion}',
-    };
-  }
-
-  Map<String, dynamic> _decodeConsentResponseBody(String body) {
-    var raw = body.trim();
-    if (raw.startsWith('\uFEFF')) {
-      raw = raw.substring(1);
-    }
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) {
-      throw FormatException('API yanıtı JSON nesnesi değil');
-    }
-    return Map<String, dynamic>.from(decoded);
-  }
-
-  bool _apiSuccessFlag(dynamic v) =>
-      v == true || v == 1 || v == '1' || v == 'true';
 
   @override
   void initState() {
@@ -444,7 +417,10 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
     setState(() => _isLoading = true);
 
     try {
-      final deviceInfo = await _collectDeviceInfo();
+      final deviceInfo = LegalConsentLogService.buildDeviceInfo(
+        userId: widget.driverId,
+        isDriver: true,
+      );
       
       Position? position;
       try {
@@ -467,36 +443,18 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
         print('📝 VALE SÖZLEŞME LOG: $type v$version');
         
         try {
-          final response = await http.post(
-            Uri.parse(_legalApiUrl),
-            headers: _legalConsentHeaders(),
-            body: jsonEncode({
-              'user_id': widget.driverId,
-              'driver_id': widget.driverId,
-              'user_type': 'driver',
-              'consent_type': type,
-              'consent_text': _getContractContent(type),
-              'consent_summary': title,
-              'consent_version': version,
-              'ip_address': deviceInfo['ip_address'],
-              'user_agent': deviceInfo['user_agent'],
-              'device_fingerprint': deviceInfo['device_fingerprint'],
-              'platform': deviceInfo['platform'],
-              'os_version': deviceInfo['os_version'],
-              'app_version': deviceInfo['app_version'],
-              'latitude': position?.latitude,
-              'longitude': position?.longitude,
-              'location_accuracy': position?.accuracy,
-              'language': 'tr',
-            }),
-          ).timeout(_legalPostTimeout);
+          final apiData = await LegalConsentLogService.postLegalConsent(
+            userId: widget.driverId,
+            userType: 'driver',
+            consentType: type,
+            consentText: _getContractContent(type),
+            consentSummary: title,
+            consentVersion: version,
+            deviceInfo: deviceInfo,
+            position: position,
+          );
 
-          if (response.statusCode != 200) {
-            errors.add('$type: HTTP ${response.statusCode}');
-            continue;
-          }
-          final apiData = _decodeConsentResponseBody(response.body);
-          if (_apiSuccessFlag(apiData['success'])) {
+          if (apiData['success'] == true) {
             print('✅ Vale sözleşme $type v$version loglandı');
             ok++;
           } else {
@@ -538,22 +496,6 @@ class _DriverContractUpdateScreenState extends State<DriverContractUpdateScreen>
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  Future<Map<String, dynamic>> _collectDeviceInfo() async {
-    final platform = Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'unknown');
-    final fingerprint = DateTime.now().millisecondsSinceEpoch.toString() + 
-                       '_driver_' + 
-                       widget.driverId.toString();
-    
-    return {
-      'platform': platform,
-      'os_version': Platform.operatingSystemVersion,
-      'app_version': '4.0.0',
-      'device_fingerprint': fingerprint,
-      'user_agent': 'FunBreak Vale Driver/$platform ${Platform.operatingSystemVersion}',
-      'ip_address': 'auto',
-    };
   }
 
   String _getContractContent(String type) {
