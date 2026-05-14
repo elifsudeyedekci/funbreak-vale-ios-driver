@@ -129,6 +129,10 @@ class AuthProvider with ChangeNotifier {
             await prefs.setString('user_phone', user['phone'] ?? '05555555555');
             await prefs.setBool('is_logged_in', true);
 
+            final panelStatus = (user['status'] ?? 'active').toString().toLowerCase().trim();
+            await prefs.setString('driver_membership_status', panelStatus);
+            final accountActive = panelStatus == 'active';
+
             _isAuthenticated = true;
             _userEmail = user['email'];
             _driverId = user['id'].toString();
@@ -144,15 +148,25 @@ class AuthProvider with ChangeNotifier {
               enableAutoLogin: true,
             );
             
-            // Şoförü online yap
-            print('📍 LOGİN: update_driver_status çağrılıyor...');
-            await _updateDriverStatus(true);
-            print('✅ LOGİN: update_driver_status tamamlandı');
-            
-            // Konum takibini başlat
-            print('📍 LOGİN: Location tracking başlatılıyor...');
-            _locationService.startLocationTracking();
-            print('✅ LOGİN: Location tracking başladı');
+            if (accountActive) {
+              // Şoförü online yap
+              print('📍 LOGİN: update_driver_status çağrılıyor...');
+              await _updateDriverStatus(true);
+              print('✅ LOGİN: update_driver_status tamamlandı');
+              
+              // Konum takibini başlat
+              print('📍 LOGİN: Location tracking başlatılıyor...');
+              _locationService.startLocationTracking();
+              print('✅ LOGİN: Location tracking başladı');
+            } else {
+              await prefs.setBool('is_online', false);
+              await prefs.setBool('is_available', false);
+              await prefs.setBool('driver_is_online', false);
+              _isOnline = false;
+              _isAvailable = false;
+              await _updateDriverStatus(false);
+              print('⛔ LOGİN: Hesap pasif — çevrimiçi / konum takibi başlatılmadı');
+            }
             
             // ✅ ÇOKLU OTURUM: Eski cihazları logout yap
             try {
@@ -434,6 +448,7 @@ class AuthProvider with ChangeNotifier {
       
       // Sadece auth bilgilerini temizle, session bilgilerini koru
       final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('driver_membership_status');
       await prefs.remove('is_authenticated');
       await prefs.remove('user_email');
       await prefs.remove('driver_id');

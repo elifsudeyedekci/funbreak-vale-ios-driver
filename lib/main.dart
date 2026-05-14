@@ -31,8 +31,8 @@ import 'screens/permissions/permission_check_screen.dart';
 // import 'screens/ride/active_ride_screen.dart'; // ESKİ - KALDIRILDI
 import 'screens/ride/modern_active_ride_screen.dart'; // MODERN ELİT YOLCULUK EKRANI!
 import 'screens/splash/persistence_aware_splash.dart'; // PERSİSTENCE KONTROLLÜ SPLASH!
-import 'screens/auth/auth_wrapper.dart'; // AUTH WRAPPER!
 import 'screens/main/persistence_aware_driver_main.dart'; // PERSİSTENCE AWARE ANA SAYFA!
+import 'widgets/driver_membership_guard.dart';
 import 'screens/main/main_screen.dart'; // NORMAL ANA SAYFA!
 import 'services/ride_persistence_service.dart'; // PERSİSTENCE SERVİS!
 import 'services/background_location_service.dart'; // 🚗 ARKA PLAN KONUM SERVİSİ!
@@ -804,8 +804,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
         
         if (authProvider.isLoggedIn) {
-          // SÖZLEŞME KONTROLÜ İÇİN PersistenceAwareDriverMainScreen KULLAN!
-          return const PersistenceAwareDriverMainScreen();
+          return const DriverMembershipGuard(
+            child: PersistenceAwareDriverMainScreen(),
+          );
         }
         
         return const LoginScreen();
