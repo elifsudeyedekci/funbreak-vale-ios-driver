@@ -32,7 +32,7 @@ class DriverHomeScreen extends StatefulWidget {
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProviderStateMixin {
   GoogleMapController? _mapController;
-  LatLng _currentLocation = const LatLng(40.0082, 20.0784); // İstanbul
+  LatLng _currentLocation = const LatLng(41.0082, 28.9784); // İstanbul
   double _todayEarnings = 0.0;
   int _todayRides = 0;
   
@@ -289,10 +289,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
     final scheduledTime = rideData['scheduled_time'] ?? '';
     final scheduledLabel = _getScheduledTimeDisplay(rideData);
     final scheduledSubtext = _getScheduledTimeSubtext(rideData);
-    final pickupDistanceRaw = _calculateDistanceToCustomer(rideData);
-    final pickupDistanceText = (pickupDistanceRaw.contains('km') || pickupDistanceRaw.contains('m'))
-        ? pickupDistanceRaw
-        : '$pickupDistanceRaw km';
+    final pickupDistanceText = _calculateDistanceToCustomer(rideData);
     
     print('✅ [iOS POPUP] İçerik hazırlandı:');
     print('   ⏰ Scheduled: $scheduledLabel ($scheduledSubtext)');
@@ -361,7 +358,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                           Icons.social_distance,
                           'Pickup Mesafesi',
                           pickupDistanceText,
-                          'Mevcut konumunuza göre',
+                          'Yol mesafesi (araç)',
                           iconColor: Colors.teal,
                         ),
                       ),
@@ -852,7 +849,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
                                   const Icon(Icons.near_me, color: Colors.blue, size: 22),
                                   const Text('Uzaklık', style: TextStyle(fontSize: 11, color: Colors.grey)),
                                   Text(
-                                    '${_calculateDistanceToCustomer(rideData)} km',
+                                    _calculateDistanceToCustomer(rideData),
                                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
                                   ),
                                 ],
@@ -913,7 +910,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
               
               // Warning text
               Text(
-                '⏰ Bu talep 30 saniye sonra otomatik olarak iptal olacaktır',
+                '⏰ Bu talep 60 saniye sonra otomatik olarak iptal olacaktır',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.red[600],
@@ -927,12 +924,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
       ),
     ).then((_) {
       // Dialog açıldıktan sonra 30 SANİYE TIMEOUT BAŞLAT!
-      timeoutTimer = Timer(const Duration(seconds: 30), () {
+      timeoutTimer = Timer(const Duration(seconds: 60), () {
         if (!isDialogClosed && mounted && Navigator.canPop(context)) {
           isDialogClosed = true;
           Navigator.of(context).pop(); // Dialog'u kapat
           
-          print('⏰ 30 saniye doldu - Talep ${rideData['ride_id']} otomatik RED edildi!');
+          print('⏰ 60 saniye doldu - Talep ${rideData['ride_id']} otomatik RED edildi!');
           
           // Otomatik red işlemi
           _rejectRide(int.tryParse(rideData['ride_id'].toString()) ?? 0);
@@ -1103,70 +1100,57 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
     }
   }
 
-  // MÜŞTERİYE GERÇEK UZAKLIK HESAPLAMA - SÜRÜCÜ KONUMU → MÜŞTERİ PICKUP!
+  String? _readPickupDistanceFromRideData(Map<String, dynamic> rideData) {
+    final distanceText = rideData['distance_text']?.toString().trim();
+    if (distanceText != null && distanceText.isNotEmpty && distanceText != 'Bilinmiyor') {
+      if (distanceText.contains('km') || distanceText.contains('m')) {
+        return distanceText;
+      }
+      return '$distanceText km';
+    }
+
+    for (final key in ['distance_km', 'distance']) {
+      final raw = rideData[key];
+      if (raw == null) continue;
+      final value = raw.toString().trim();
+      if (value.isEmpty || value == '?' || value == 'null') continue;
+      final parsed = double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), ''));
+      if (parsed == null || parsed <= 0) continue;
+      if (parsed < 1) {
+        return '${(parsed * 1000).round()} m';
+      }
+      return '${parsed.toStringAsFixed(1)} km';
+    }
+    return null;
+  }
+
+  // Pickup mesafesi: once backend yol km (bildirim ile ayni), yoksa yerel hesap
   String _calculateDistanceToCustomer(Map<String, dynamic> rideData) {
     try {
-      // GÜNCEL KONUM AL!
-      _getCurrentLocation(); // Konum güncelle
-      
-      // Sürücünün GERÇEK anlık konumu
+      final apiDistance = _readPickupDistanceFromRideData(rideData);
+      if (apiDistance != null) {
+        print('   Backend mesafe kullaniliyor: $apiDistance');
+        return apiDistance;
+      }
+
       final driverLat = _currentLocation.latitude;
       final driverLng = _currentLocation.longitude;
-      
-      // Müşterinin pickup koordinatları
-      double? pickupLat = double.tryParse(rideData['pickup_lat']?.toString() ?? '');
-      double? pickupLng = double.tryParse(rideData['pickup_lng']?.toString() ?? '');
-      
-      print('📍 MESAFE HESAPLAMA DEBUG:');
-      print('   🚗 Sürücü: $driverLat, $driverLng');
-      print('   👤 Müşteri pickup: $pickupLat, $pickupLng');
-      
-      // Eğer koordinatlar varsa GERÇEK mesafe hesapla
-      if (pickupLat != null && pickupLng != null && 
-          pickupLat != 0.0 && pickupLng != 0.0) {
-            
-        // GERÇEK COĞRAFI MESAFE HESAPLAMA!
-        final distanceInMeters = Geolocator.distanceBetween(
-          driverLat, 
-          driverLng, 
-          pickupLat, 
-          pickupLng
-        );
-        
+      final pickupLat = double.tryParse(rideData['pickup_lat']?.toString() ?? '');
+      final pickupLng = double.tryParse(rideData['pickup_lng']?.toString() ?? '');
+
+      if (pickupLat != null && pickupLng != null && pickupLat != 0.0 && pickupLng != 0.0) {
+        final distanceInMeters = Geolocator.distanceBetween(driverLat, driverLng, pickupLat, pickupLng);
         final distanceInKm = distanceInMeters / 1000;
-        
-        print('   📏 Hesaplanan mesafe: ${distanceInMeters.toInt()}m (${distanceInKm.toStringAsFixed(1)}km)');
-        
-        // AKILLI GÖSTER İM: 100m altında metre, üstünde km
-        if (distanceInKm < 0.0) {
-          return '${distanceInMeters.toInt()}m';
-        } else if (distanceInKm < 0.0) {
-          return '${(distanceInKm * 1000).toInt()}m';
+        if (distanceInKm < 1) {
+          return '${distanceInMeters.round()} m';
         }
-        
-        return distanceInKm.toStringAsFixed(1);
+        return '${distanceInKm.toStringAsFixed(1)} km';
       }
-      
-      // Koordinat yoksa API'den distance çek (fallback)
-      if (rideData['distance_km'] != null && rideData['distance_km'] != '?') {
-        final distance = rideData['distance_km'].toString();
-        print('   📊 API distance kullanılıyor: $distance');
-        
-        if (distance != '?' && distance.isNotEmpty) {
-          final distanceNum = double.tryParse(distance.replaceAll(' km', ''));
-          if (distanceNum != null) {
-            return distanceNum.toStringAsFixed(1);
-          }
-        }
-      }
-      
-      // Son çare - DEBUG için varsayılan
-      print('   ⚠️ Koordinat yok - varsayılan mesafe');
-      return '0.0'; // Daha gerçekçi varsayılan
-      
+
+      return 'Bilinmiyor';
     } catch (e) {
-      print('❌ Müşteriye uzaklık hesaplama hatası: $e');
-      return '?';
+      print('Musteriye uzaklik hesaplama hatasi: $e');
+      return 'Bilinmiyor';
     }
   }
 
@@ -1365,25 +1349,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with TickerProvider
   
   // GERÇEK MESAFE HESAPLAMA (ESKİ FONKSIYON KORUNDU)!
   String _calculateRealDistance(Map<String, dynamic> rideData) {
-    // API'den distance gelirse onu kullan
-    if (rideData['distance_km'] != null && rideData['distance_km'] != '?') {
-      final distance = rideData['distance_km'].toString();
-      if (distance != '?' && distance.isNotEmpty) {
-        final distanceNum = double.tryParse(distance.replaceAll(' km', ''));
-        if (distanceNum != null) {
-          return distanceNum.toStringAsFixed(1);
-        }
-      }
-    }
-    
-    // Gerçek mesafe hesapla (sürücü konumu vs pickup konumu)
-    try {
-      // Basit tahmin - şehir içi ortalama
-      return '0.0'; // Varsayılan değer
-    } catch (e) {
-      return '?';
-    }
+    return _calculateDistanceToCustomer(rideData);
   }
+
   
   void _acceptRide(int rideId) async {
     Navigator.pop(context); // Dialog'u kapat
